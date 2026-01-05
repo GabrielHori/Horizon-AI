@@ -76,15 +76,24 @@
 ## 📸 Screenshots
 
 ### Dashboard
-The main dashboard with quick chat and model recommendations.
+The main dashboard with quick chat, system status, and model recommendations.
 
-### AI Chat
-Full-featured chat interface with conversation history.
-
-### Settings
-Configure language, storage path, and more.
+![Dashboard](screenshots/dashboard.png)
 
 ---
+
+### AI Chat
+Full-featured AI chat interface with conversation history and code-friendly responses.
+
+![AI Chat](screenshots/ai-chat.png)
+
+---
+
+### Settings
+Application configuration panel for language, storage, and system preferences.
+
+![Settings](screenshots/settings.png)
+
 
 ## 🏗️ Architecture
 
