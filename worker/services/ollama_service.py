@@ -1,7 +1,11 @@
 import subprocess
 import re
+import sys
 from typing import Generator
 from services.monitoring_service import monitoring_service # ✅ Import pour les logs
+
+# ✅ Flag pour masquer la fenêtre CMD sur Windows
+SUBPROCESS_FLAGS = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
 
 # Regex pour supprimer les codes ANSI et les spinners
 ANSI_ESCAPE = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])|\[[\d;]*[A-Za-z]|\x1b\[[^\x1b]*')
@@ -33,7 +37,8 @@ class OllamaService:
             text=True,
             encoding="utf-8",
             errors="ignore",
-            bufsize=1 # Line buffered
+            bufsize=1,  # Line buffered
+            creationflags=SUBPROCESS_FLAGS  # ✅ Masquer la fenêtre CMD sur Windows
         )
 
         try:

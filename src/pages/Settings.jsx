@@ -185,28 +185,37 @@ export default function Settings({ userName, setUserName, language, setLanguage 
             </div>
           </SectionContainer>
 
-          {/* SYSTEM INFO - V1 (options avancées masquées) */}
+          {/* SYSTEM */}
           <SectionContainer title={t.settings?.init_title || "SYSTEM"} icon={Rocket} isDarkMode={isDarkMode}>
-            <div className="space-y-4">
-              <div className={`p-4 rounded-2xl ${isDarkMode ? 'bg-white/5' : 'bg-slate-50'}`}>
-                <p className={`text-xs font-medium ${isDarkMode ? 'opacity-60' : 'text-slate-500'}`}>
-                  {language === 'fr' ? 'Version' : 'Version'}
-                </p>
-                <p className="text-sm font-bold mt-1">Horizon AI v1.0</p>
+            <div className="space-y-6">
+              {/* Version info */}
+              <div className={`flex items-center justify-between p-4 rounded-2xl ${isDarkMode ? 'bg-white/5' : 'bg-slate-50'}`}>
+                <div>
+                  <p className="text-xs font-bold">{language === 'fr' ? 'Version' : 'Version'}</p>
+                  <p className={`text-[9px] ${isDarkMode ? 'opacity-40' : 'text-slate-400'}`}>Horizon AI v1.0</p>
+                </div>
+                <span className="px-3 py-1 rounded-lg bg-emerald-500/10 text-emerald-500 text-[9px] font-bold">STABLE</span>
               </div>
-              
-              <div className={`p-4 rounded-2xl ${isDarkMode ? 'bg-white/5' : 'bg-slate-50'}`}>
-                <p className={`text-xs font-medium ${isDarkMode ? 'opacity-60' : 'text-slate-500'}`}>
-                  {language === 'fr' ? 'Moteur IA' : 'AI Engine'}
-                </p>
-                <p className="text-sm font-bold mt-1">Ollama (Local)</p>
-              </div>
-              
-              <p className={`text-[10px] text-center pt-2 ${isDarkMode ? 'opacity-30' : 'text-slate-400'}`}>
-                {language === 'fr' 
-                  ? '⚙️ Options avancées disponibles dans une prochaine version' 
-                  : '⚙️ Advanced options coming in a future version'}
-              </p>
+
+              {/* Startup option */}
+              <ToggleRow
+                label={t.settings?.startup_label || "Startup"}
+                description={language === 'fr' ? "Lancer au démarrage de Windows (bientôt)" : "Launch with Windows (coming soon)"}
+                active={settings.runAtStartup}
+                onClick={() => toggleSetting('runAtStartup')}
+                isDarkMode={isDarkMode}
+                disabled={true}
+              />
+
+              {/* Auto-update option */}
+              <ToggleRow
+                label={t.settings?.update_label || "Updates"}
+                description={language === 'fr' ? "Mise à jour auto des modèles (bientôt)" : "Auto-update models (coming soon)"}
+                active={settings.autoUpdate}
+                onClick={() => toggleSetting('autoUpdate')}
+                isDarkMode={isDarkMode}
+                disabled={true}
+              />
             </div>
           </SectionContainer>
 
@@ -290,8 +299,8 @@ const SectionContainer = ({ children, title, icon: Icon, isDarkMode }) => (
   </div>
 );
 
-const ToggleRow = ({ icon: Icon, label, description, active, onClick, color = "bg-indigo-600", isDarkMode }) => (
-  <div className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${isDarkMode ? 'bg-black/20 border-white/5' : 'bg-slate-50 border-slate-200 shadow-sm'}`}>
+const ToggleRow = ({ icon: Icon, label, description, active, onClick, color = "bg-indigo-600", isDarkMode, disabled = false }) => (
+  <div className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${isDarkMode ? 'bg-black/20 border-white/5' : 'bg-slate-50 border-slate-200 shadow-sm'} ${disabled ? 'opacity-50' : ''}`}>
     <div className="flex items-center gap-3">
       {Icon && <Icon size={16} className={active ? "text-emerald-500" : "opacity-20"} />}
       <div>
@@ -299,14 +308,15 @@ const ToggleRow = ({ icon: Icon, label, description, active, onClick, color = "b
         {description && <span className={`text-[9px] ${isDarkMode ? 'opacity-40' : 'text-slate-400'}`}>{description}</span>}
       </div>
     </div>
-    <Toggle active={active} onClick={onClick} color={color} />
+    <Toggle active={active} onClick={disabled ? undefined : onClick} color={color} disabled={disabled} />
   </div>
 );
 
-const Toggle = ({ active, onClick, color = "bg-indigo-600" }) => (
+const Toggle = ({ active, onClick, color = "bg-indigo-600", disabled = false }) => (
   <button 
     onClick={onClick} 
-    className={`w-12 h-6 rounded-full transition-all relative ${active ? color : 'bg-slate-300 dark:bg-gray-700'}`}
+    disabled={disabled}
+    className={`w-12 h-6 rounded-full transition-all relative ${active ? color : 'bg-slate-300 dark:bg-gray-700'} ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
   >
     <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all shadow-md ${active ? 'left-7' : 'left-1'}`}></div>
   </button>
