@@ -1,0 +1,77 @@
+# ========================================
+# DEPENDENCIES
+# ========================================
+node_modules/
+.pnpm-store/
+.npm/
+
+# ========================================
+# BUILD OUTPUTS
+# ========================================
+dist/
+build/
+*.exe
+*.dll
+*.pdb
+*.d
+
+# Tauri build artifacts
+src-tauri/target/
+src-tauri/gen/
+
+# PyInstaller
+*.spec
+dist/backend/
+
+# ========================================
+# DEVELOPMENT
+# ========================================
+# Vite
+.vite/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ========================================
+# PYTHON
+# ========================================
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+pip-log.txt
+pip-delete-this-directory.txt
+
+# ========================================
+# LOGS & DATA (user-specific)
+# ========================================
+logs/
+data/
+*.log
+
+# ========================================
+# OS FILES
+# ========================================
+.DS_Store
+Thumbs.db
+Desktop.ini
+ehthumbs.db
+
+# ========================================
+# MISC
+# ========================================
+*.local
+.env
+.env.*
+!.env.example
+
+# Lock files (optional - uncomment if you want to ignore)
+# package-lock.json
+# Cargo.lock

@@ -1,0 +1,36 @@
+{
+  "identifier": "default",
+  "description": "Permissions pour la fenêtre principale",
+  "windows": [
+    "main"
+  ],
+  "permissions": [
+    "core:default",
+    "core:window:default",
+    "core:app:default",
+    "core:path:default",
+    "core:event:default",
+    "core:image:default",
+    "shell:default",
+    "dialog:default",
+    {
+      "identifier": "shell:allow-execute",
+      "allow": [
+        {
+          "name": "powershell",
+          "cmd": "powershell",
+          "args": true
+        },
+        {
+          "name": "python",
+          "cmd": "python",
+          "args": true
+        },
+        {
+          "name": "binaries/backend",
+          "sidecar": true
+        }
+      ]
+    }
+  ]
+}
