@@ -418,12 +418,22 @@ const AIChatPanel = ({ selectedModel, chatId, setSelectedChatId, language = 'fr'
     }, 100);
   };
 
-  // ✅ AMÉLIORATION: Fonction pour interrompre (placeholder - nécessite backend)
+  // ✅ V1: Marquer comme interrompu (le streaming continue en arrière-plan mais l'UI est libérée)
   const handleStop = () => {
-    // Pour l'instant, on marque juste comme terminé
-    // Une vraie implémentation nécessiterait un signal au backend
     setIsTyping(false);
     setStreamStartTime(null);
+    // Ajouter un message d'interruption à la réponse actuelle
+    setMessages(prev => {
+      const copy = [...prev];
+      const lastMsg = copy.at(-1);
+      if (lastMsg?.role === 'assistant' && lastMsg.content) {
+        copy[copy.length - 1] = {
+          ...lastMsg,
+          content: lastMsg.content + '\n\n⏹️ *' + (language === 'fr' ? 'Génération interrompue' : 'Generation stopped') + '*'
+        };
+      }
+      return copy;
+    });
   };
 
   /* DELETE CONVERSATION */

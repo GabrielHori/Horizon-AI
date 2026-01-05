@@ -185,24 +185,28 @@ export default function Settings({ userName, setUserName, language, setLanguage 
             </div>
           </SectionContainer>
 
-          {/* INITIALIZATION */}
+          {/* SYSTEM INFO - V1 (options avancées masquées) */}
           <SectionContainer title={t.settings?.init_title || "SYSTEM"} icon={Rocket} isDarkMode={isDarkMode}>
-            <div className="space-y-6">
-              <ToggleRow
-                label={t.settings?.startup_label || "Startup"}
-                description={t.settings?.startup_sub || "Launch with OS"}
-                active={settings.runAtStartup}
-                onClick={() => toggleSetting('runAtStartup')}
-                isDarkMode={isDarkMode}
-              />
-
-              <ToggleRow
-                label={t.settings?.update_label || "Updates"}
-                description={t.settings?.update_sub || "Auto-update models"}
-                active={settings.autoUpdate}
-                onClick={() => toggleSetting('autoUpdate')}
-                isDarkMode={isDarkMode}
-              />
+            <div className="space-y-4">
+              <div className={`p-4 rounded-2xl ${isDarkMode ? 'bg-white/5' : 'bg-slate-50'}`}>
+                <p className={`text-xs font-medium ${isDarkMode ? 'opacity-60' : 'text-slate-500'}`}>
+                  {language === 'fr' ? 'Version' : 'Version'}
+                </p>
+                <p className="text-sm font-bold mt-1">Horizon AI v1.0</p>
+              </div>
+              
+              <div className={`p-4 rounded-2xl ${isDarkMode ? 'bg-white/5' : 'bg-slate-50'}`}>
+                <p className={`text-xs font-medium ${isDarkMode ? 'opacity-60' : 'text-slate-500'}`}>
+                  {language === 'fr' ? 'Moteur IA' : 'AI Engine'}
+                </p>
+                <p className="text-sm font-bold mt-1">Ollama (Local)</p>
+              </div>
+              
+              <p className={`text-[10px] text-center pt-2 ${isDarkMode ? 'opacity-30' : 'text-slate-400'}`}>
+                {language === 'fr' 
+                  ? '⚙️ Options avancées disponibles dans une prochaine version' 
+                  : '⚙️ Advanced options coming in a future version'}
+              </p>
             </div>
           </SectionContainer>
 
