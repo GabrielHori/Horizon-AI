@@ -309,15 +309,15 @@ const OllamaSetup = ({ onComplete, language = 'fr' }) => {
         {/* Barre de progression (visible sauf si prêt) */}
         {isLoading && (
           <div className="w-full max-w-xs mx-auto">
-            <div className="w-full h-2 rounded-full bg-white/10 overflow-hidden mb-4">
+            <div className="w-full h-2 rounded-full bg-white/10 overflow-hidden">
               <div 
                 className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 transition-all duration-700 ease-out"
                 style={{ width: `${progress}%` }}
               />
             </div>
             
-            {/* Indicateur de chargement discret */}
-            <div className="flex items-center justify-center gap-3 text-white/30">
+            {/* Indicateur de chargement discret - Plus espacé en dessous */}
+            <div className="flex items-center justify-center gap-3 text-white/30 mt-6">
               <Loader2 size={14} className="animate-spin" />
               <span className="text-[10px] font-bold uppercase tracking-widest">
                 {progress > 0 ? `${Math.round(progress)}%` : ''}
