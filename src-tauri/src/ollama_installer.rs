@@ -82,8 +82,15 @@ pub async fn download_and_install_ollama<R: Runtime>(app: &AppHandle<R>) -> Resu
     
     // Exécuter l'installeur silencieusement
     // Note: OllamaSetup.exe supporte /S pour installation silencieuse
+    #[cfg(windows)]
     let install_result = Command::new(&installer_path)
-        .arg("/S")  // Silent install
+        .args(["/S", "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART"])  // Silent install complet
+        .creation_flags(CREATE_NO_WINDOW)
+        .status();
+    
+    #[cfg(not(windows))]
+    let install_result = Command::new(&installer_path)
+        .arg("/S")
         .status();
     
     // Nettoyer le fichier temporaire
@@ -96,7 +103,14 @@ pub async fn download_and_install_ollama<R: Runtime>(app: &AppHandle<R>) -> Resu
                 "message": "Ollama installed successfully!"
             }));
             
-            // Démarrer le service Ollama
+            // Démarrer le service Ollama en arrière-plan (silencieux)
+            #[cfg(windows)]
+            let _ = Command::new("ollama")
+                .arg("serve")
+                .creation_flags(CREATE_NO_WINDOW)
+                .spawn();
+            
+            #[cfg(not(windows))]
             let _ = Command::new("ollama")
                 .arg("serve")
                 .spawn();
