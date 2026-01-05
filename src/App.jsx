@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import AppLayout from './Layouts/AppLayout';
 import OllamaSetup from './components/OllamaSetup';
+import OnboardingTour from './components/OnboardingTour';
 import TitleBar from './components/TitleBar';
 import { requestWorker } from './services/bridge';
 
@@ -121,6 +122,9 @@ function App() {
           backendLaunched={true}
         />
       </div>
+      
+      {/* Guide interactif au premier lancement */}
+      <OnboardingTour language={language} />
     </div>
   );
 }
