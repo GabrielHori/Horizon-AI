@@ -32,6 +32,40 @@ fn start_ollama() -> Result<(), String> {
     ollama_installer::start_ollama_service()
 }
 
+// ========================================
+// COMMANDES DE FENÊTRE PERSONNALISÉES
+// ========================================
+
+/// Minimise la fenêtre
+#[tauri::command]
+async fn minimize_window(window: tauri::Window) -> Result<(), String> {
+    window.minimize().map_err(|e| e.to_string())
+}
+
+/// Maximise ou restaure la fenêtre
+#[tauri::command]
+async fn toggle_maximize(window: tauri::Window) -> Result<bool, String> {
+    if window.is_maximized().unwrap_or(false) {
+        window.unmaximize().map_err(|e| e.to_string())?;
+        Ok(false)
+    } else {
+        window.maximize().map_err(|e| e.to_string())?;
+        Ok(true)
+    }
+}
+
+/// Ferme la fenêtre (et l'application)
+#[tauri::command]
+async fn close_window(window: tauri::Window) -> Result<(), String> {
+    window.close().map_err(|e| e.to_string())
+}
+
+/// Vérifie si la fenêtre est maximisée
+#[tauri::command]
+fn is_maximized(window: tauri::Window) -> bool {
+    window.is_maximized().unwrap_or(false)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -61,7 +95,11 @@ pub fn run() {
             call_python,
             check_ollama_installed,
             install_ollama,
-            start_ollama
+            start_ollama,
+            minimize_window,
+            toggle_maximize,
+            close_window,
+            is_maximized
         ])
         .run(tauri::generate_context!())
         .expect("Erreur lors du lancement de l'application Horizon AI");

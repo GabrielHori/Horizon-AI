@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import AppLayout from './Layouts/AppLayout';
 import OllamaSetup from './components/OllamaSetup';
+import TitleBar from './components/TitleBar';
 import { requestWorker } from './services/bridge';
 
 function App() {
@@ -88,27 +89,39 @@ function App() {
 
   // Écran de setup Ollama au premier lancement
   if (showOllamaSetup) {
-    return <OllamaSetup onComplete={() => setShowOllamaSetup(false)} language={language} />;
+    return (
+      <div className="h-screen flex flex-col overflow-hidden">
+        <TitleBar />
+        <div className="flex-1 overflow-hidden">
+          <OllamaSetup onComplete={() => setShowOllamaSetup(false)} language={language} />
+        </div>
+      </div>
+    );
   }
 
   return (
-    <AppLayout
-      language={language}
-      setLanguage={setLanguage}
-      activeTab={activeTab}
-      setActiveTab={setActiveTab}
-      selectedChatId={selectedChatId}
-      setSelectedChatId={setSelectedChatId}
-      selectedModel={selectedModel}
-      setSelectedModel={setSelectedModel}
-      isNavOpen={isNavOpen}
-      setIsNavOpen={setIsNavOpen}
-      userName={userName}
-      setUserName={setUserName}
-      systemStats={systemStats}
-      healthStatus={healthStatus}
-      backendLaunched={true}
-    />
+    <div className="h-screen flex flex-col overflow-hidden">
+      <TitleBar />
+      <div className="flex-1 overflow-hidden">
+        <AppLayout
+          language={language}
+          setLanguage={setLanguage}
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          selectedChatId={selectedChatId}
+          setSelectedChatId={setSelectedChatId}
+          selectedModel={selectedModel}
+          setSelectedModel={setSelectedModel}
+          isNavOpen={isNavOpen}
+          setIsNavOpen={setIsNavOpen}
+          userName={userName}
+          setUserName={setUserName}
+          systemStats={systemStats}
+          healthStatus={healthStatus}
+          backendLaunched={true}
+        />
+      </div>
+    </div>
   );
 }
 

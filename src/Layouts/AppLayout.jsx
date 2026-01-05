@@ -64,7 +64,7 @@ const AppLayout = ({
   };
 
   return (
-    <div className={`flex h-screen w-screen overflow-hidden font-sans transition-colors duration-500 ${isDarkMode ? 'bg-black text-white' : 'bg-slate-50 text-slate-900'}`}>
+    <div className={`flex h-full w-full overflow-hidden font-sans transition-colors duration-500 ${isDarkMode ? 'bg-black text-white' : 'bg-slate-50 text-slate-900'}`}>
       <AnimatedBackground isDarkMode={isDarkMode} />
 
       <div className={`relative z-20 transition-all duration-500 ease-in-out border-r backdrop-blur-2xl ${isDarkMode ? 'bg-black/40 border-white/5' : 'bg-white/60 border-black/5'} ${isNavOpen ? 'w-64' : 'w-20'}`}>

@@ -36,7 +36,7 @@ const Sidebar = ({ activeTab, setActiveTab, systemStats, isCollapsed, language }
   ];
 
   return (
-    <div className={`flex flex-col h-screen py-6 transition-all duration-300 z-20 ${isCollapsed ? 'w-20' : 'w-64'}`}>
+    <div className={`flex flex-col h-full py-4 transition-all duration-300 z-20 ${isCollapsed ? 'w-20' : 'w-64'}`}>
       
       {/* LOGO SECTION */}
       <div className={`flex items-center gap-3 px-6 mb-10 ${isCollapsed ? 'justify-center px-0' : ''}`}>
