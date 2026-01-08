@@ -1,15 +1,20 @@
 /**
- * RemoteAccess Component (Refactored)
- * Main orchestrator for remote access functionality
+ * RemoteAccess Component
+ * ======================
+ * Interface pour gérer l'accès distant sécurisé via Cloudflare Tunnel.
  *
- * Responsibilities:
- * - Orchestrate hooks and components
- * - Manage overall layout
- * - Handle high-level state
- * - Ensure safe Tauri worker calls
+ * Fonctionnalités:
+ * - Toggle activation/désactivation du tunnel
+ * - Affichage de l'URL publique
+ * - Génération et affichage du token d'authentification
+ * - QR Code pour accès mobile
+ * - Gestion de la liste blanche IP
+ *
+ * PHILOSOPHIE LOCAL-FIRST:
+ * Aucune donnée n'est envoyée vers le cloud. Cloudflare ne fait que relayer le trafic.
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Globe,
   Shield,
@@ -33,56 +38,248 @@ import {
 } from 'lucide-react';
 import { requestWorker } from '../services/bridge';
 
-// Import hooks
-import { useTunnelStatus } from './RemoteAccess/hooks/useTunnelStatus';
-import { useCloudflaredInstall } from './RemoteAccess/hooks/useCloudflaredInstall';
-import { useAuthToken } from './RemoteAccess/hooks/useAuthToken';
+// Composant QR Code simple (SVG)
+const QRCodeDisplay = ({ data, size = 200, isDarkMode }) => {
+  // Générer un QR code simple via une API externe (optionnel)
+  // Pour une solution 100% locale, on pourrait utiliser une lib comme 'qrcode'
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(data)}&bgcolor=${isDarkMode ? '1a1a1a' : 'ffffff'}&color=${isDarkMode ? 'ffffff' : '000000'}`;
 
-// Import components
-import Header from './RemoteAccess/components/Header';
-import PublicUrlBox from './RemoteAccess/components/PublicUrlBox';
-import QRCodeDisplay from './RemoteAccess/components/QRCodeDisplay';
-
-// Import utilities
-import { copyToClipboard } from './RemoteAccess/utils/clipboard';
-import { translations } from './RemoteAccess/i18n/translations';
+  return (
+    <div className={`p-4 rounded-2xl ${isDarkMode ? 'bg-white/5' : 'bg-slate-50'} flex items-center justify-center`}>
+      <img
+        src={qrUrl}
+        alt="QR Code for remote access"
+        className="rounded-lg"
+        width={size}
+        height={size}
+      />
+    </div>
+  );
+};
 
 export default function RemoteAccess({ language = 'fr', isDarkMode = true }) {
-  // State management
+  // États
+  const [status, setStatus] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [toggling, setToggling] = useState(false);
-  const [copied, setCopied] = useState(null);
+  const [generatingToken, setGeneratingToken] = useState(false);
+  const [currentToken, setCurrentToken] = useState(null);
+  const [showToken, setShowToken] = useState(false);
+  const [copied, setCopied] = useState(null); // 'url' | 'token' | null
   const [error, setError] = useState(null);
   const [newIp, setNewIp] = useState('');
   const [showQR, setShowQR] = useState(false);
   const [installing, setInstalling] = useState(false);
+  const [installProgress, setInstallProgress] = useState(0);
+  const [tokenType, setTokenType] = useState('auto'); // 'auto' ou 'custom'
+  const [customToken, setCustomToken] = useState('');
+  const [customTokenStrength, setCustomTokenStrength] = useState(null);
+  const [validatingCustomToken, setValidatingCustomToken] = useState(false);
 
-  // Get translations
-  const text = translations[language] || translations.en;
+  // Traductions
+  const t = {
+    fr: {
+      title: "ACCÈS DISTANT",
+      subtitle: "Cloudflare Tunnel",
+      description: "Accédez à votre IA locale depuis n'importe où",
+      localFirst: "100% Local-First - Aucune donnée stockée dans le cloud",
 
-  // Hooks initialization
-  const { status, loading, loadStatus, setError: setStatusError } = useTunnelStatus();
-  const { installProgress, installCloudflared } = useCloudflaredInstall(installing, setInstalling, loadStatus);
-  const {
-    currentToken,
-    showToken,
-    generatingToken,
-    tokenType,
-    customToken,
-    customTokenStrength,
-    validatingCustomToken,
-    setShowToken,
-    setTokenType,
-    setCustomToken,
-    generateToken,
-    validateAndApplyCustomToken
-  } = useAuthToken(status, loadStatus, language);
+      // Status
+      tunnelActive: "Tunnel Actif",
+      tunnelInactive: "Tunnel Inactif",
+      connecting: "Connexion en cours...",
 
-  // Handle errors from hooks
-  const handleError = useCallback((err) => {
-    console.error("RemoteAccess error:", err);
-    setError(err.message);
-    setStatusError(err.message);
-  }, [setStatusError]);
+      // Actions
+      enableRemoteAccess: "Activer l'accès distant",
+      disableRemoteAccess: "Désactiver l'accès distant",
+
+      // URL
+      publicUrl: "URL Publique",
+      copyUrl: "Copier l'URL",
+      urlCopied: "URL copiée !",
+      openInBrowser: "Ouvrir dans le navigateur",
+
+      // Token
+      authToken: "Token d'Authentification",
+      generateNewToken: "Générer un nouveau token",
+      regenerateToken: "Régénérer",
+      tokenGenerated: "Token généré",
+      tokenExpires: "Expire dans",
+      hours: "heures",
+      copyToken: "Copier le token",
+      tokenCopied: "Token copié !",
+      showToken: "Afficher",
+      hideToken: "Masquer",
+      tokenWarning: "Ce token ne sera affiché qu'une seule fois. Copiez-le maintenant !",
+
+      // QR Code
+      qrCode: "QR Code Mobile",
+      scanQR: "Scannez ce code avec votre téléphone",
+      showQR: "Afficher le QR Code",
+      hideQR: "Masquer le QR Code",
+
+      // IP Allowlist
+      ipAllowlist: "Liste Blanche IP",
+      ipAllowlistDesc: "Restreindre l'accès à des IPs spécifiques (optionnel)",
+      addIp: "Ajouter une IP",
+      noIpRestriction: "Aucune restriction (toutes les IPs autorisées)",
+
+      // Cloudflared
+      cloudflaredRequired: "Cloudflared requis",
+      cloudflaredNotInstalled: "Cloudflared n'est pas installé",
+      installCloudflared: "Installer Cloudflared",
+      installCommand: "Commande d'installation",
+      version: "Version",
+
+      // Security
+      securityNote: "Note de sécurité",
+      securityInfo: "Toutes les requêtes distantes nécessitent le token d'authentification. Le rate limiting protège contre les abus.",
+
+      // Errors
+      errorStarting: "Erreur lors du démarrage du tunnel",
+      errorStopping: "Erreur lors de l'arrêt du tunnel",
+      errorGeneratingToken: "Erreur lors de la génération du token"
+    },
+    en: {
+      title: "REMOTE ACCESS",
+      subtitle: "Cloudflare Tunnel",
+      description: "Access your local AI from anywhere",
+      localFirst: "100% Local-First - No data stored in the cloud",
+
+      // Status
+      tunnelActive: "Tunnel Active",
+      tunnelInactive: "Tunnel Inactive",
+      connecting: "Connecting...",
+
+      // Actions
+      enableRemoteAccess: "Enable remote access",
+      disableRemoteAccess: "Disable remote access",
+
+      // URL
+      publicUrl: "Public URL",
+      copyUrl: "Copy URL",
+      urlCopied: "URL copied!",
+      openInBrowser: "Open in browser",
+
+      // Token
+      authToken: "Authentication Token",
+      generateNewToken: "Generate new token",
+      regenerateToken: "Regenerate",
+      tokenGenerated: "Token generated",
+      tokenExpires: "Expires in",
+      hours: "hours",
+      copyToken: "Copy token",
+      tokenCopied: "Token copied!",
+      showToken: "Show",
+      hideToken: "Hide",
+      tokenWarning: "This token will only be displayed once. Copy it now!",
+
+      // QR Code
+      qrCode: "Mobile QR Code",
+      scanQR: "Scan this code with your phone",
+      showQR: "Show QR Code",
+      hideQR: "Hide QR Code",
+
+      // IP Allowlist
+      ipAllowlist: "IP Allowlist",
+      ipAllowlistDesc: "Restrict access to specific IPs (optional)",
+      addIp: "Add IP",
+      noIpRestriction: "No restriction (all IPs allowed)",
+
+      // Cloudflared
+      cloudflaredRequired: "Cloudflared required",
+      cloudflaredNotInstalled: "Cloudflared is not installed",
+      installCloudflared: "Install Cloudflared",
+      installCommand: "Install command",
+      version: "Version",
+
+      // Security
+      securityNote: "Security Note",
+      securityInfo: "All remote requests require the authentication token. Rate limiting protects against abuse.",
+
+      // Errors
+      errorStarting: "Error starting tunnel",
+      errorStopping: "Error stopping tunnel",
+      errorGeneratingToken: "Error generating token"
+    }
+  };
+
+  const text = t[language] || t.en;
+
+  // Charger le statut au montage
+  const loadStatus = useCallback(async () => {
+    try {
+      const result = await requestWorker("tunnel_get_status");
+      setStatus(result);
+      setError(null);
+    } catch (err) {
+      console.error("Error loading tunnel status:", err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadStatus();
+
+    // Rafraîchir le statut toutes les 5 secondes quand le tunnel est actif
+    const interval = setInterval(() => {
+      if (status?.tunnel_running) {
+        loadStatus();
+      }
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [loadStatus, status?.tunnel_running]);
+
+  // Polling de la progression pendant l'installation (DOIT être avant les returns conditionnels)
+  useEffect(() => {
+    let progressInterval;
+
+    if (installing) {
+      progressInterval = setInterval(async () => {
+        try {
+          const progress = await requestWorker("tunnel_install_progress");
+          if (progress) {
+            setInstallProgress(progress.progress || 0);
+          }
+        } catch (err) {
+          // Ignorer les erreurs de polling
+        }
+      }, 500);
+    }
+
+    return () => {
+      if (progressInterval) {
+        clearInterval(progressInterval);
+      }
+    };
+  }, [installing]);
+
+  // Installation automatique de cloudflared
+  const installCloudflared = useCallback(async () => {
+    setInstalling(true);
+    setInstallProgress(0);
+    setError(null);
+
+    try {
+      // Démarrer l'installation
+      const result = await requestWorker("tunnel_install_cloudflared");
+
+      if (result?.success) {
+        setInstallProgress(100);
+        // Recharger le statut après installation
+        await loadStatus();
+      } else {
+        setError(result?.error || "Installation failed");
+      }
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setInstalling(false);
+    }
+  }, [loadStatus]);
 
   // Toggle tunnel
   const toggleTunnel = async () => {
@@ -93,9 +290,13 @@ export default function RemoteAccess({ language = 'fr', isDarkMode = true }) {
       if (status?.tunnel_running) {
         await requestWorker("tunnel_stop");
       } else {
-        // Check if token exists, generate if needed
+        // Vérifier si un token existe, sinon en générer un
         if (!status?.token_configured) {
-          await generateToken();
+          const tokenResult = await requestWorker("tunnel_generate_token", { expires_hours: 24 });
+          if (tokenResult?.token) {
+            setCurrentToken(tokenResult);
+            setShowToken(true);
+          }
         }
 
         const result = await requestWorker("tunnel_start");
@@ -104,16 +305,47 @@ export default function RemoteAccess({ language = 'fr', isDarkMode = true }) {
         }
       }
 
-      // Reload status
+      // Recharger le statut
       await loadStatus();
+
     } catch (err) {
-      handleError(err);
+      setError(err.message);
     } finally {
       setToggling(false);
     }
   };
 
-  // Add IP to allowlist
+  // Générer un nouveau token
+  const generateToken = async () => {
+    setGeneratingToken(true);
+    setError(null);
+
+    try {
+      const result = await requestWorker("tunnel_generate_token", { expires_hours: 24 });
+      if (result?.token) {
+        setCurrentToken(result);
+        setShowToken(true);
+        await loadStatus();
+      }
+    } catch (err) {
+      setError(text.errorGeneratingToken);
+    } finally {
+      setGeneratingToken(false);
+    }
+  };
+
+  // Copier dans le presse-papier
+  const copyToClipboard = async (text, type) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(type);
+      setTimeout(() => setCopied(null), 2000);
+    } catch (err) {
+      console.error("Failed to copy:", err);
+    }
+  };
+
+  // Ajouter une IP à la liste blanche
   const addAllowedIp = async () => {
     if (!newIp.trim()) return;
 
@@ -122,21 +354,85 @@ export default function RemoteAccess({ language = 'fr', isDarkMode = true }) {
       setNewIp('');
       await loadStatus();
     } catch (err) {
-      handleError(err);
+      setError(err.message);
     }
   };
 
-  // Remove IP from allowlist
+  // Supprimer une IP de la liste blanche
   const removeAllowedIp = async (ip) => {
     try {
       await requestWorker("tunnel_remove_allowed_ip", { ip });
       await loadStatus();
     } catch (err) {
-      handleError(err);
+      setError(err.message);
     }
   };
 
-  // Loading state
+  // Validation du token personnalisé
+  const validateCustomToken = async () => {
+    if (!String(customToken || '').trim()) {
+      setError(language === 'fr' ? 'Token requis' : 'Token required');
+      return;
+    }
+
+    try {
+      setValidatingCustomToken(true);
+      setCustomTokenStrength(null);
+      setError(null);
+
+      const result = await requestWorker("tunnel_validate_custom_token", {
+        token: customToken
+      });
+
+      if (result?.valid) {
+        setCustomTokenStrength(result.strength);
+      } else {
+        setCustomTokenStrength('invalid');
+        setError(result?.error || (language === 'fr' ? 'Token invalide' : 'Invalid token'));
+      }
+    } catch (err) {
+      setCustomTokenStrength('invalid');
+      setError(err.message);
+    } finally {
+      setValidatingCustomToken(false);
+    }
+  };
+
+  // Définir un token personnalisé
+  const applyCustomToken = async () => {
+    if (!customToken.trim() || !customTokenStrength || customTokenStrength === 'invalid') {
+      setError(language === 'fr' ? 'Token invalide' : 'Invalid token');
+      return;
+    }
+
+    try {
+      setGeneratingToken(true);
+      setError(null);
+
+      const result = await requestWorker("tunnel_set_custom_token", {
+        token: customToken
+      });
+
+      if (result?.success) {
+        setCurrentToken({
+          token: customToken,
+          expires_hours: 24
+        });
+        setShowToken(true);
+        setTokenType('auto'); // Retour au mode auto après définition
+        setCustomToken('');
+        setCustomTokenStrength(null);
+        await loadStatus();
+      } else {
+        setError(result?.error || (language === 'fr' ? 'Erreur lors de la définition du token' : 'Error setting token'));
+      }
+    } catch (err) {
+      setError(text.errorGeneratingToken);
+    } finally {
+      setGeneratingToken(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className={`p-8 rounded-[32px] border ${isDarkMode ? 'bg-[#0A0A0A] border-white/5' : 'bg-white border-slate-200'}`}>
@@ -148,7 +444,7 @@ export default function RemoteAccess({ language = 'fr', isDarkMode = true }) {
     );
   }
 
-  // Installation screen if cloudflared not installed
+  // Afficher l'écran d'installation si cloudflared n'est pas installé
   if (!status?.cloudflared_installed) {
     return (
       <div className={`p-8 rounded-[32px] border ${isDarkMode ? 'bg-[#0A0A0A] border-white/5' : 'bg-white border-slate-200'}`}>
@@ -166,16 +462,10 @@ export default function RemoteAccess({ language = 'fr', isDarkMode = true }) {
                 {text.cloudflaredRequired}
               </p>
 
-              {/* Auto-install button */}
+              {/* Bouton d'installation automatique */}
               {!installing ? (
                 <button
-                  onClick={async () => {
-                    try {
-                      await installCloudflared();
-                    } catch (err) {
-                      handleError(err);
-                    }
-                  }}
+                  onClick={installCloudflared}
                   className="w-full flex items-center justify-center gap-2 px-6 py-4 rounded-xl bg-emerald-500 text-white text-sm font-bold hover:bg-emerald-600 transition-all active:scale-98 shadow-lg mb-4"
                   style={{
                     boxShadow: '0 4px 20px rgba(16, 185, 129, 0.3)',
@@ -186,7 +476,7 @@ export default function RemoteAccess({ language = 'fr', isDarkMode = true }) {
                 </button>
               ) : (
                 <div className="mb-4">
-                  {/* Progress bar */}
+                  {/* Barre de progression */}
                   <div className={`relative h-3 rounded-full overflow-hidden ${isDarkMode ? 'bg-black/40' : 'bg-slate-200'}`}>
                     <div
                       className="absolute inset-y-0 left-0 bg-emerald-500 transition-all duration-300 rounded-full"
@@ -212,7 +502,7 @@ export default function RemoteAccess({ language = 'fr', isDarkMode = true }) {
                 </div>
               )}
 
-              {/* Manual installation */}
+              {/* Installation manuelle (alternative) */}
               <div className={`p-4 rounded-xl ${isDarkMode ? 'bg-black/40' : 'bg-white'}`}>
                 <p className={`text-[10px] mb-2 ${isDarkMode ? 'opacity-40' : 'text-slate-400'}`}>
                   {language === 'fr' ? 'Ou installez manuellement :' : 'Or install manually:'}
@@ -245,11 +535,26 @@ export default function RemoteAccess({ language = 'fr', isDarkMode = true }) {
     );
   }
 
-  // Main content when cloudflared is installed
   return (
     <div className={`p-8 rounded-[32px] border ${isDarkMode ? 'bg-[#0A0A0A] border-white/5' : 'bg-white border-slate-200'}`}>
       {/* Header */}
-      <Header text={text} status={status} toggling={toggling} isDarkMode={isDarkMode} />
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-4">
+          <Globe className={isDarkMode ? 'text-gray-400' : 'text-gray-500'} size={22} />
+          <div>
+            <h2 className="text-sm font-black uppercase tracking-widest">{text.title}</h2>
+            <p className={`text-[10px] ${isDarkMode ? 'opacity-40' : 'text-slate-400'}`}>{text.subtitle}</p>
+          </div>
+        </div>
+
+        {/* Status Badge */}
+        <div className={`flex items-center gap-2 px-4 py-2 rounded-xl ${isDarkMode ? 'bg-white/5 border border-white/10' : 'bg-slate-100 border border-slate-200'}`}>
+          {status?.tunnel_running ? <Unlock size={14} /> : <Lock size={14} />}
+          <span className="text-xs font-bold">
+            {toggling ? text.connecting : status?.tunnel_running ? text.tunnelActive : text.tunnelInactive}
+          </span>
+        </div>
+      </div>
 
       {/* Description */}
       <p className={`text-sm mb-2 ${isDarkMode ? 'opacity-60' : 'text-slate-600'}`}>{text.description}</p>
@@ -299,21 +604,77 @@ export default function RemoteAccess({ language = 'fr', isDarkMode = true }) {
         </div>
       </div>
 
-      {/* Active tunnel content */}
+      {/* Contenu actif quand le tunnel est en cours */}
       {status?.tunnel_running && (
         <div className="space-y-6">
-          {/* Public URL */}
-          <PublicUrlBox
-            text={text}
-            status={status}
-            copied={copied}
-            copyToClipboard={(text, type) => copyToClipboard(text, setCopied, type)}
-            currentToken={currentToken}
-            language={language}
-            isDarkMode={isDarkMode}
-          />
 
-          {/* Authentication Token */}
+          {/* URL Publique */}
+          <div className={`p-4 rounded-2xl ${isDarkMode ? 'bg-emerald-500/10 border border-emerald-500/20' : 'bg-emerald-50 border border-emerald-200'}`}>
+            <div className="flex items-center gap-2 mb-3">
+              <ExternalLink size={14} className="text-emerald-500" />
+              <span className="text-xs font-bold text-emerald-500">{text.publicUrl}</span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                readOnly
+                value={status?.tunnel_url || "Initialisation..."}
+                className={`flex-1 p-3 rounded-xl text-xs font-mono ${isDarkMode ? 'bg-black/40 text-white' : 'bg-white text-slate-900'} border-none outline-none`}
+              />
+
+              <button
+                onClick={() => copyToClipboard(status?.tunnel_url, 'url')}
+                className={`p-3 rounded-xl ${isDarkMode ? 'bg-white/10 hover:bg-white/20' : 'bg-slate-200 hover:bg-slate-300'} transition-colors`}
+                title={text.copyUrl}
+              >
+                {copied === 'url' ? <Check size={16} className="text-emerald-500" /> : <Copy size={16} />}
+              </button>
+
+              <a
+                href={status?.tunnel_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`p-3 rounded-xl ${isDarkMode ? 'bg-white/10 hover:bg-white/20' : 'bg-slate-200 hover:bg-slate-300'} transition-colors`}
+                title={text.openInBrowser}
+              >
+                <ExternalLink size={16} />
+              </a>
+            </div>
+
+            {copied === 'url' && (
+              <p className="text-xs text-emerald-500 mt-2">{text.urlCopied}</p>
+            )}
+
+            {/* Lien personnalisé avec token */}
+            {currentToken && status?.tunnel_url && (
+              <div className={`mt-4 p-3 rounded-xl ${isDarkMode ? 'bg-black/40' : 'bg-white'}`}>
+                <p className={`text-[10px] mb-2 ${isDarkMode ? 'opacity-40' : 'text-slate-400'}`}>
+                  {language === 'fr' ? '🔗 Lien avec authentification (connexion automatique):' : '🔗 Link with auth (auto-login):'}
+                </p>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    readOnly
+                    value={`${status.tunnel_url}?token=${currentToken.token}`}
+                    className={`flex-1 p-2 rounded-lg text-[10px] font-mono ${isDarkMode ? 'bg-white/5 text-white/60' : 'bg-slate-50 text-slate-600'} border-none outline-none`}
+                  />
+                  <button
+                    onClick={() => copyToClipboard(`${status.tunnel_url}?token=${currentToken.token}`, 'fullUrl')}
+                    className={`p-2 rounded-lg ${isDarkMode ? 'bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30' : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'} transition-colors`}
+                    title={language === 'fr' ? 'Copier le lien complet' : 'Copy full link'}
+                  >
+                    {copied === 'fullUrl' ? <Check size={14} /> : <Copy size={14} />}
+                  </button>
+                </div>
+                <p className={`text-[9px] mt-2 ${isDarkMode ? 'text-amber-400/60' : 'text-amber-600'}`}>
+                  ⚠️ {language === 'fr' ? 'Ce lien contient votre token - ne le partagez pas publiquement' : 'This link contains your token - do not share publicly'}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Token d'authentification */}
           <div className={`p-4 rounded-2xl ${isDarkMode ? 'bg-white/5' : 'bg-slate-50'}`}>
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
@@ -331,7 +692,7 @@ export default function RemoteAccess({ language = 'fr', isDarkMode = true }) {
               </button>
             </div>
 
-            {/* Token options */}
+            {/* Options de token */}
             <div className="mt-4 p-4 rounded-xl bg-black/20 border border-white/10">
               <div className="flex items-center gap-2 mb-3">
                 <input
@@ -371,23 +732,30 @@ export default function RemoteAccess({ language = 'fr', isDarkMode = true }) {
 
                   <div className="flex items-center gap-2">
                     <button
-                      onClick={validateAndApplyCustomToken}
+                      onClick={validateCustomToken}
                       disabled={validatingCustomToken || !String(customToken || '').trim()}
-                      className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-bold ${isDarkMode ? 'bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30' : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'} transition-colors disabled:opacity-50`}
-                      title={language === 'fr' ? 'Valider et appliquer le token personnalisé' : 'Validate and apply custom token'}
+                      className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-bold ${isDarkMode ? 'bg-blue-500/20 text-blue-400 hover:bg-blue-500/30' : 'bg-blue-100 text-blue-700 hover:bg-blue-200'} transition-colors disabled:opacity-50`}
                     >
                       {validatingCustomToken ? (
                         <>
                           <Loader2 size={14} className="animate-spin" />
-                          {language === 'fr' ? 'Application du token...' : 'Applying token...'}
+                          {language === 'fr' ? 'Validation...' : 'Validating...'}
                         </>
                       ) : (
-                        language === 'fr' ? 'Appliquer ce token' : 'Apply this token'
+                        language === 'fr' ? 'Valider le token' : 'Validate token'
                       )}
+                    </button>
+
+                    <button
+                      onClick={setCustomToken}
+                      disabled={!customTokenStrength || customTokenStrength === 'invalid'}
+                      className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-bold ${isDarkMode ? 'bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30' : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'} transition-colors disabled:opacity-50`}
+                    >
+                      {language === 'fr' ? 'Définir ce token' : 'Set this token'}
                     </button>
                   </div>
 
-                  {/* Strength indicator */}
+                  {/* Indicateur de force */}
                   {customTokenStrength && (
                     <div className="flex items-center gap-2 text-xs">
                       <div className={`w-3 h-3 rounded-full ${customTokenStrength === 'good' ? 'bg-emerald-500' : customTokenStrength === 'medium' ? 'bg-amber-500' : 'bg-red-500'}`} />
@@ -423,7 +791,7 @@ export default function RemoteAccess({ language = 'fr', isDarkMode = true }) {
                   </button>
 
                   <button
-                    onClick={() => copyToClipboard(currentToken.token, setCopied, 'token')}
+                    onClick={() => copyToClipboard(currentToken.token, 'token')}
                     className={`p-2 rounded-lg ${isDarkMode ? 'bg-white/10 hover:bg-white/20' : 'bg-slate-200 hover:bg-slate-300'} transition-colors`}
                   >
                     {copied === 'token' ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
@@ -490,7 +858,7 @@ export default function RemoteAccess({ language = 'fr', isDarkMode = true }) {
             )}
           </div>
 
-          {/* IP Allowlist */}
+          {/* Liste blanche IP */}
           <div className={`p-4 rounded-2xl ${isDarkMode ? 'bg-white/5' : 'bg-slate-50'}`}>
             <div className="flex items-center gap-2 mb-2">
               <Shield size={14} />
@@ -500,7 +868,7 @@ export default function RemoteAccess({ language = 'fr', isDarkMode = true }) {
               {text.ipAllowlistDesc}
             </p>
 
-            {/* IP List */}
+            {/* Liste des IPs */}
             {status?.allowed_ips?.length > 0 ? (
               <div className="space-y-2 mb-3">
                 {status.allowed_ips.map((ip, index) => (
@@ -521,7 +889,7 @@ export default function RemoteAccess({ language = 'fr', isDarkMode = true }) {
               </p>
             )}
 
-            {/* Add IP */}
+            {/* Ajouter une IP */}
             <div className="flex items-center gap-2">
               <input
                 type="text"
@@ -539,10 +907,11 @@ export default function RemoteAccess({ language = 'fr', isDarkMode = true }) {
               </button>
             </div>
           </div>
+
         </div>
       )}
 
-      {/* Security Note (always visible) */}
+      {/* Note de sécurité (toujours visible) */}
       <div className={`mt-6 p-4 rounded-2xl ${isDarkMode ? 'bg-blue-500/10 border border-blue-500/20' : 'bg-blue-50 border border-blue-200'}`}>
         <div className="flex items-start gap-3">
           <Info size={16} className="text-blue-500 flex-shrink-0 mt-0.5" />
@@ -556,4 +925,4 @@ export default function RemoteAccess({ language = 'fr', isDarkMode = true }) {
       </div>
     </div>
   );
-}
+}// Validation du token personnalisé
