@@ -1,279 +1,653 @@
 @import "tailwindcss";
 
-/* --- 1. CONFIGURATION DU THÈME --- */
-@theme {
-  --color-app-bg: var(--bg-primary);
-  --color-app-card: var(--bg-secondary);
-  --color-app-text: var(--text-primary);
-  --color-app-text-muted: var(--text-muted);
-  --color-app-border: var(--border-color);
+/* ═══════════════════════════════════════════════════════════════════════════
+   🌑 DARK LIQUID METAL & PRISM DESIGN SYSTEM
+   ═══════════════════════════════════════════════════════════════════════════ */
 
-  /* Variables Liquid Metal */
+/* --- 1. VOID & METAL COLOR PALETTE --- */
+@theme {
+  /* Void Colors - Absolute darkness */
   --color-void-100: #000000;
-  --color-void-200: #050505;
+  --color-void-200: #030303;
+  --color-void-300: #050505;
+  
+  /* Metal Colors - Liquid chrome */
   --color-metal-100: #0a0a0a;
   --color-metal-200: #111111;
-  --color-metal-300: #2a2a2a;
-  --color-glass-100: rgba(255, 255, 255, 0.03);
-  --color-glass-200: rgba(255, 255, 255, 0.06);
+  --color-metal-300: #1a1a1a;
+  --color-metal-400: #2a2a2a;
+  --color-metal-shine: #3a3a3a;
   
-  --background-image-liquid-metal: linear-gradient(145deg, var(--color-void-200) 0%, var(--color-metal-100) 100%);
-
-  @keyframes rotate-liquid {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-  }
-
-  @keyframes fadeInSlide {
-    from {
-      opacity: 0;
-      transform: translateY(10px);
-      filter: blur(10px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-      filter: blur(0);
-    }
-  }
+  /* Glass Colors - Transparent layers */
+  --color-glass-100: rgba(255, 255, 255, 0.02);
+  --color-glass-200: rgba(255, 255, 255, 0.04);
+  --color-glass-300: rgba(255, 255, 255, 0.06);
+  --color-glass-border: rgba(255, 255, 255, 0.08);
+  
+  /* Prism Colors - Iridescent accents */
+  --color-prism-cyan: rgba(34, 211, 238, 0.6);
+  --color-prism-magenta: rgba(236, 72, 153, 0.6);
+  --color-prism-blue: rgba(99, 102, 241, 0.8);
+  --color-prism-purple: rgba(168, 85, 247, 0.7);
+  
+  /* Liquid Light - Metallic gradients */
+  --gradient-liquid-metal: linear-gradient(135deg, #1a1a1a 0%, #0a0a0a 50%, #111111 100%);
+  --gradient-chrome-shine: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.1) 50%, transparent 100%);
+  --gradient-prism-edge: linear-gradient(135deg, var(--color-prism-cyan) 0%, var(--color-prism-magenta) 100%);
 }
 
-@keyframes pulse-soft {
-  0%, 100% { opacity: 0.4; transform: scale(1); }
-  50% { opacity: 0.6; transform: scale(1.05); }
-}
-
-.animate-pulse-soft {
-  animation: pulse-soft 8s infinite ease-in-out;
-}
-
-@keyframes blob-float {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  33% { transform: translate(30px, -50px) scale(1.1); }
-  66% { transform: translate(-20px, 20px) scale(0.9); }
-}
-
-.animate-blob {
-  animation: blob-float 15s infinite alternate ease-in-out;
-}
-
-.animation-delay-2000 {
-  animation-delay: 2s;
-}
-
-.animation-delay-4000 {
-  animation-delay: 4s;
-}
-
-/* --- 2. LOGIQUE DE THÈME --- */
+/* --- 2. ROOT VARIABLES --- */
 :root {
-  --bg-primary: #cbd5e1;       
-  --bg-secondary: #ffffff;     
-  --text-primary: #0f172a;     
-  --text-muted: #475569;       
-  --border-color: #94a3b8;     
-  --dropdown-bg: #ffffff;
-  --liquid-color-1: #4f46e5;
-  --liquid-color-2: #8b5cf6;
-  --scrollbar-track: rgba(0, 0, 0, 0.05);
+  --bg-primary: #000000;
+  --bg-secondary: #050505;
+  --text-primary: #ffffff;
+  --text-muted: rgba(255, 255, 255, 0.5);
+  --border-color: rgba(255, 255, 255, 0.06);
+  --liquid-color-1: #6366f1;
+  --liquid-color-2: #a855f7;
+  --scrollbar-track: rgba(255, 255, 255, 0.02);
   --scrollbar-thumb: rgba(99, 102, 241, 0.3);
-  --scrollbar-thumb-hover: rgba(99, 102, 241, 0.5);
+  --scrollbar-thumb-hover: rgba(139, 92, 246, 0.5);
 }
 
 .dark {
   --bg-primary: #000000;
-  --bg-secondary: #0a0a0a;
+  --bg-secondary: #030303;
   --text-primary: #ffffff;
-  --text-muted: #9ca3af;
-  --border-color: rgba(255, 255, 255, 0.1);
-  --dropdown-bg: #0d0d0d;
-  --liquid-color-1: #6366f1;
-  --liquid-color-2: #a855f7;
-  --scrollbar-track: rgba(255, 255, 255, 0.02);
-  --scrollbar-thumb: rgba(99, 102, 241, 0.4);
-  --scrollbar-thumb-hover: rgba(139, 92, 246, 0.6);
+  --text-muted: rgba(255, 255, 255, 0.4);
+  --border-color: rgba(255, 255, 255, 0.05);
 }
 
-/* --- 3. BASE & FIXES --- */
+/* --- 3. BASE STYLES --- */
 #root {
   min-width: 1100px; 
   min-height: 650px;
 }
 
 body {
-  background-color: var(--bg-primary) !important;
-  color: var(--text-primary);
-  font-family: 'Inter', system-ui, sans-serif;
-  transition: background-color 0.4s ease, color 0.4s ease;
+  background-color: #000000 !important;
+  color: #ffffff;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
   margin: 0;
-  /* Empêcher la sélection de texte sur les éléments UI */
   -webkit-user-select: none;
   user-select: none;
+  overflow: hidden;
 }
 
-/* Autoriser la sélection dans les zones de contenu */
 input, textarea, [contenteditable], .prose, .selectable {
   -webkit-user-select: text;
   user-select: text;
 }
 
-/* --- 4. SCROLLBARS PERSONNALISÉES --- */
+/* ═══════════════════════════════════════════════════════════════════════════
+   🌊 LIQUID METAL ANIMATIONS
+   ═══════════════════════════════════════════════════════════════════════════ */
 
-/* Style global des scrollbars - plus fines et cohérentes */
-* {
-  scrollbar-width: thin;
-  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+/* Ambient blob movement */
+@keyframes liquid-drift {
+  0%, 100% { 
+    transform: translate(0, 0) scale(1) rotate(0deg);
+    opacity: 0.3;
+  }
+  25% { 
+    transform: translate(50px, -30px) scale(1.1) rotate(90deg);
+    opacity: 0.5;
+  }
+  50% { 
+    transform: translate(-20px, 50px) scale(0.95) rotate(180deg);
+    opacity: 0.4;
+  }
+  75% { 
+    transform: translate(30px, 20px) scale(1.05) rotate(270deg);
+    opacity: 0.6;
+  }
 }
 
-/* WebKit (Chrome, Safari, Edge) */
+@keyframes liquid-pulse {
+  0%, 100% { 
+    filter: blur(80px) brightness(1);
+    transform: scale(1);
+  }
+  50% { 
+    filter: blur(100px) brightness(1.3);
+    transform: scale(1.1);
+  }
+}
+
+/* Chrome shine effect */
+@keyframes chrome-sweep {
+  0% { transform: translateX(-200%) skewX(-20deg); }
+  100% { transform: translateX(400%) skewX(-20deg); }
+}
+
+/* Prism edge glow */
+@keyframes prism-glow {
+  0%, 100% { 
+    opacity: 0.4;
+    filter: hue-rotate(0deg);
+  }
+  50% { 
+    opacity: 0.8;
+    filter: hue-rotate(30deg);
+  }
+}
+
+/* Mercury ripple effect */
+@keyframes mercury-ripple {
+  0% { 
+    box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.4);
+  }
+  70% { 
+    box-shadow: 0 0 0 20px rgba(99, 102, 241, 0);
+  }
+  100% { 
+    box-shadow: 0 0 0 0 rgba(99, 102, 241, 0);
+  }
+}
+
+/* Float animation */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+/* Page entry with liquid feel */
+@keyframes liquid-enter {
+  0% {
+    opacity: 0;
+    transform: translateY(30px) scale(0.95);
+    filter: blur(10px);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(-5px) scale(1.02);
+    filter: blur(0);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+/* Viscous slide */
+@keyframes viscous-slide {
+  0% {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  40% {
+    transform: translateX(10%);
+    opacity: 1;
+  }
+  70% {
+    transform: translateX(-3%);
+  }
+  100% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   🔮 ANIMATION UTILITY CLASSES
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.animate-liquid-drift {
+  animation: liquid-drift 20s infinite ease-in-out;
+}
+
+.animate-liquid-pulse {
+  animation: liquid-pulse 8s infinite ease-in-out;
+}
+
+.animate-chrome-sweep {
+  animation: chrome-sweep 3s ease-in-out;
+}
+
+.animate-prism-glow {
+  animation: prism-glow 4s infinite ease-in-out;
+}
+
+.animate-mercury-ripple {
+  animation: mercury-ripple 2s ease-out;
+}
+
+.animate-float {
+  animation: float 6s infinite ease-in-out;
+}
+
+.animate-liquid-enter {
+  animation: liquid-enter 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.animate-viscous-slide {
+  animation: viscous-slide 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+
+/* Animation delays */
+.animation-delay-500 { animation-delay: 0.5s; }
+.animation-delay-1000 { animation-delay: 1s; }
+.animation-delay-2000 { animation-delay: 2s; }
+.animation-delay-3000 { animation-delay: 3s; }
+.animation-delay-4000 { animation-delay: 4s; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   💎 LIQUID METAL COMPONENTS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Liquid Metal Surface */
+.liquid-metal-surface {
+  background: linear-gradient(135deg, #0a0a0a 0%, #111111 50%, #0a0a0a 100%);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  position: relative;
+  overflow: hidden;
+}
+
+.liquid-metal-surface::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.03), transparent);
+  transform: skewX(-20deg);
+  transition: left 0.8s ease;
+}
+
+.liquid-metal-surface:hover::before {
+  left: 150%;
+}
+
+/* Chrome Button */
+.btn-chrome {
+  position: relative;
+  background: linear-gradient(180deg, #1a1a1a 0%, #0a0a0a 100%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.btn-chrome::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -150%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.15) 50%, transparent 100%);
+  transform: skewX(-20deg);
+  transition: left 0.6s ease;
+}
+
+.btn-chrome:hover {
+  border-color: rgba(99, 102, 241, 0.5);
+  box-shadow: 
+    0 0 20px rgba(99, 102, 241, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  transform: translateY(-2px);
+}
+
+.btn-chrome:hover::before {
+  left: 150%;
+}
+
+.btn-chrome:active {
+  transform: translateY(0) scale(0.98);
+}
+
+/* Prism Edge Border */
+.prism-edge {
+  position: relative;
+}
+
+.prism-edge::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, 
+    transparent 0%, 
+    rgba(34, 211, 238, 0.5) 20%, 
+    rgba(236, 72, 153, 0.5) 50%, 
+    rgba(99, 102, 241, 0.5) 80%, 
+    transparent 100%
+  );
+  animation: prism-glow 4s infinite ease-in-out;
+}
+
+/* Glass Panel - Deep dark */
+.glass-panel {
+  background: rgba(5, 5, 5, 0.8);
+  backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+/* Mercury Input */
+.mercury-input {
+  background: linear-gradient(180deg, #0a0a0a 0%, #050505 100%);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.mercury-input:focus {
+  border-color: rgba(99, 102, 241, 0.5);
+  box-shadow: 
+    0 0 30px rgba(99, 102, 241, 0.15),
+    inset 0 0 20px rgba(99, 102, 241, 0.05);
+}
+
+/* Liquid Fill Bar */
+.liquid-fill {
+  position: relative;
+  background: rgba(255, 255, 255, 0.03);
+  overflow: hidden;
+}
+
+.liquid-fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background: linear-gradient(90deg, 
+    rgba(99, 102, 241, 0.8) 0%, 
+    rgba(139, 92, 246, 0.9) 50%,
+    rgba(99, 102, 241, 0.8) 100%
+  );
+  border-radius: inherit;
+  box-shadow: 
+    0 0 20px rgba(99, 102, 241, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  transition: width 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   📜 SCROLLBARS - Liquid Chrome Style
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(99, 102, 241, 0.3) rgba(255, 255, 255, 0.02);
+}
+
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--scrollbar-track);
+  background: rgba(255, 255, 255, 0.02);
   border-radius: 10px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--scrollbar-thumb);
+  background: linear-gradient(180deg, rgba(99, 102, 241, 0.4), rgba(139, 92, 246, 0.4));
   border-radius: 10px;
-  border: 2px solid transparent;
-  background-clip: padding-box;
-  transition: background 0.3s ease;
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--scrollbar-thumb-hover);
-  border: 2px solid transparent;
-  background-clip: padding-box;
+  background: linear-gradient(180deg, rgba(99, 102, 241, 0.6), rgba(139, 92, 246, 0.6));
 }
 
-::-webkit-scrollbar-thumb:active {
-  background: var(--liquid-color-2);
-}
-
-::-webkit-scrollbar-corner {
-  background: transparent;
-}
-
-/* Scrollbar plus fine pour les composants spécifiques */
 .custom-scrollbar::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 4px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
   background: transparent;
 }
 
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: var(--scrollbar-thumb);
-  border-radius: 10px;
+/* ═══════════════════════════════════════════════════════════════════════════
+   ✨ SPECIAL EFFECTS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Neon Glow - Liquid variant */
+.neon-liquid {
+  box-shadow: 
+    0 0 10px rgba(99, 102, 241, 0.3),
+    0 0 20px rgba(99, 102, 241, 0.2),
+    0 0 40px rgba(99, 102, 241, 0.1),
+    inset 0 0 20px rgba(99, 102, 241, 0.05);
 }
 
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: var(--scrollbar-thumb-hover);
+/* Selection Color */
+::selection {
+  background: rgba(99, 102, 241, 0.4);
+  color: #ffffff;
 }
 
-/* Scrollbar invisible par défaut, visible au survol */
-.scrollbar-hidden::-webkit-scrollbar {
-  width: 0;
-  height: 0;
-}
-
-.scrollbar-hidden:hover::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-/* --- 5. COMPOSANTS DESIGN --- */
-@layer components {
-  .btn-liquid-metal {
-    @apply relative overflow-hidden bg-app-card rounded-xl transition-all duration-500 border border-app-border;
-    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
-  }
-
-  .animate-fade-in {
-    animation: fadeInSlide 0.6s ease-out forwards;
-  }
-}
-
-/* --- 6. ANIMATION PAGE ENTRY --- */
-@keyframes page-entry {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.animate-page-entry {
-  animation: page-entry 0.4s ease-out forwards;
-}
-
-/* --- 7. GLASS EFFECT --- */
-.glass-effect {
-  background: rgba(255, 255, 255, 0.03);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.dark .glass-effect {
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-/* --- 8. FOCUS STATES --- */
+/* Focus States */
 *:focus {
   outline: none;
 }
 
 *:focus-visible {
-  outline: 2px solid var(--liquid-color-1);
+  outline: 2px solid rgba(99, 102, 241, 0.5);
   outline-offset: 2px;
   border-radius: 4px;
 }
 
-/* --- 9. SELECTION COLOR --- */
-::selection {
-  background: rgba(99, 102, 241, 0.3);
-  color: inherit;
+/* Hover lift with liquid shadow */
+.hover-liquid {
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-.dark ::selection {
-  background: rgba(139, 92, 246, 0.4);
+.hover-liquid:hover {
+  transform: translateY(-4px);
+  box-shadow: 
+    0 20px 40px -15px rgba(0, 0, 0, 0.5),
+    0 0 30px rgba(99, 102, 241, 0.1);
 }
 
-/* --- 10. SMOOTH TRANSITIONS --- */
-.transition-smooth {
+/* Iridescent shimmer */
+.shimmer-iridescent {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.05) 25%,
+    rgba(34, 211, 238, 0.1) 50%,
+    rgba(236, 72, 153, 0.1) 75%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  background-size: 200% 200%;
+  animation: shimmer 3s ease infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 200%; }
+  100% { background-position: -200% -200%; }
+}
+
+/* Metal reflection on text */
+.text-chrome {
+  background: linear-gradient(180deg, #ffffff 0%, #a0a0a0 50%, #ffffff 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Page transition */
+.page-transition {
+  animation: liquid-enter 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* Message appear animation */
+.message-appear {
+  animation: liquid-enter 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   🔩 BOUTONS MÉTAL CHROMÉ - Effet prononcé
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Bouton métal sombre (mode nuit) */
+.btn-metal-dark {
+  background: linear-gradient(135deg, #3a3a3a 0%, #1a1a1a 50%, #2a2a2a 100%);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 
+    0 4px 15px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+  position: relative;
+  overflow: hidden;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* --- 11. NEON GLOW EFFECTS --- */
-.neon-glow {
-  box-shadow: 0 0 10px rgba(99, 102, 241, 0.3),
-              0 0 20px rgba(99, 102, 241, 0.2),
-              0 0 30px rgba(99, 102, 241, 0.1);
+.btn-metal-dark::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
+  transition: left 0.5s ease;
 }
 
-.neon-glow-purple {
-  box-shadow: 0 0 10px rgba(139, 92, 246, 0.3),
-              0 0 20px rgba(139, 92, 246, 0.2),
-              0 0 30px rgba(139, 92, 246, 0.1);
-}
-
-/* --- 12. HOVER LIFT EFFECT --- */
-.hover-lift {
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
-
-.hover-lift:hover {
+.btn-metal-dark:hover {
+  background: linear-gradient(135deg, #4a4a4a 0%, #2a2a2a 50%, #3a3a3a 100%);
+  border-color: rgba(255, 255, 255, 0.25);
+  box-shadow: 
+    0 8px 25px rgba(0, 0, 0, 0.5),
+    0 0 20px rgba(255, 255, 255, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.3);
   transform: translateY(-2px);
-  box-shadow: 0 10px 40px -10px rgba(99, 102, 241, 0.3);
+}
+
+.btn-metal-dark:hover::before {
+  left: 100%;
+}
+
+.btn-metal-dark:active {
+  transform: translateY(0) scale(0.98);
+  box-shadow: 
+    0 2px 10px rgba(0, 0, 0, 0.4),
+    inset 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* Bouton métal clair (mode jour) */
+.btn-metal-light {
+  background: linear-gradient(135deg, #ffffff 0%, #e5e5e5 50%, #f0f0f0 100%);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 
+    0 4px 15px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.05);
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-metal-light::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.8), transparent);
+  transition: left 0.5s ease;
+}
+
+.btn-metal-light:hover {
+  background: linear-gradient(135deg, #f8f8f8 0%, #d5d5d5 50%, #e8e8e8 100%);
+  border-color: rgba(0, 0, 0, 0.15);
+  box-shadow: 
+    0 8px 25px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 1),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.btn-metal-light:hover::before {
+  left: 100%;
+}
+
+.btn-metal-light:active {
+  transform: translateY(0) scale(0.98);
+  box-shadow: 
+    0 2px 10px rgba(0, 0, 0, 0.1),
+    inset 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Bouton métal avec bordure prismatique */
+.btn-metal-prism {
+  position: relative;
+}
+
+.btn-metal-prism::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 10%;
+  right: 10%;
+  height: 2px;
+  background: linear-gradient(90deg, 
+    rgba(255, 100, 100, 0.8),
+    rgba(255, 200, 50, 0.8),
+    rgba(100, 255, 100, 0.8),
+    rgba(100, 200, 255, 0.8)
+  );
+  border-radius: 2px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.btn-metal-prism:hover::after {
+  opacity: 1;
+}
+
+/* Card métal avec hover */
+.card-metal {
+  background: linear-gradient(135deg, rgba(30, 30, 30, 0.9) 0%, rgba(15, 15, 15, 0.95) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card-metal:hover {
+  border-color: rgba(255, 255, 255, 0.15);
+  box-shadow: 
+    0 8px 30px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(255, 255, 255, 0.05);
+  transform: translateY(-4px);
+}
+
+/* Card métal mode jour */
+.card-metal-light {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(245, 245, 245, 0.9) 100%);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card-metal-light:hover {
+  border-color: rgba(0, 0, 0, 0.12);
+  box-shadow: 
+    0 8px 30px rgba(0, 0, 0, 0.12),
+    0 0 0 1px rgba(0, 0, 0, 0.03);
+  transform: translateY(-4px);
+}
+
+/* Élément cliquable générique avec hover */
+.clickable-metal {
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.clickable-metal:hover {
+  transform: scale(1.02);
+  filter: brightness(1.1);
+}
+
+.clickable-metal:active {
+  transform: scale(0.98);
 }

@@ -4,6 +4,7 @@ import { translations } from '../constants/translations';
 import { useTheme } from '../contexts/ThemeContext';
 import { open } from '@tauri-apps/plugin-dialog';
 import { requestWorker } from '../services/bridge';
+import RemoteAccess from '../components/RemoteAccess';
 
 export default function Settings({ userName, setUserName, language, setLanguage }) {
   const { isDarkMode } = useTheme();
@@ -128,8 +129,14 @@ export default function Settings({ userName, setUserName, language, setLanguage 
         <div className="flex items-start justify-between">
           <div>
             <div className="flex items-center gap-3 mb-2">
-              <div className="h-1 w-12 bg-indigo-500 rounded-full"></div>
-              <span className="text-indigo-500 font-black text-[10px] uppercase tracking-[0.4em]">{t.settings?.subtitle || "CONFIGURATION"}</span>
+              {/* Barre prismatique arc-en-ciel */}
+              <div 
+                className="h-1 w-12 rounded-full"
+                style={{
+                  background: 'linear-gradient(90deg, rgba(255,100,100,0.8), rgba(255,200,50,0.8), rgba(100,255,100,0.8), rgba(100,200,255,0.8))'
+                }}
+              />
+              <span className={`font-black text-[10px] uppercase tracking-[0.4em] ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{t.settings?.subtitle || "CONFIGURATION"}</span>
             </div>
             <h1 className="text-5xl font-black italic uppercase tracking-tighter leading-tight">
               {t.settings?.title || "SETTINGS"} <span className={`${isDarkMode ? 'opacity-30' : 'opacity-10'} italic font-light`}>Horizon</span>
@@ -165,7 +172,12 @@ export default function Settings({ userName, setUserName, language, setLanguage 
                     <button 
                       key={lang} 
                       onClick={() => handleLanguageChange(lang)}
-                      className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${settings.language === lang ? 'bg-indigo-600 text-white shadow-lg' : 'opacity-40 hover:opacity-100'}`}
+                      className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${settings.language === lang ? 'text-white shadow-lg' : 'opacity-40 hover:opacity-100'}`}
+                      style={settings.language === lang ? {
+                        background: isDarkMode 
+                          ? 'linear-gradient(135deg, #3a3a3a 0%, #2a2a2a 100%)'
+                          : 'linear-gradient(135deg, #4a4a4a 0%, #3a3a3a 100%)',
+                      } : {}}
                     >
                       {lang === 'fr' ? '🇫🇷 Français' : '🇬🇧 English'}
                     </button>
@@ -234,7 +246,13 @@ export default function Settings({ userName, setUserName, language, setLanguage 
                 />
                 <button 
                   onClick={selectFolder}
-                  className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold uppercase tracking-wider flex items-center gap-2 transition-all active:scale-95"
+                  className="px-6 py-3 text-white rounded-xl text-xs font-bold uppercase tracking-wider flex items-center gap-2 transition-all active:scale-95 hover:scale-105"
+                  style={{
+                    background: isDarkMode 
+                      ? 'linear-gradient(135deg, #3a3a3a 0%, #2a2a2a 100%)'
+                      : 'linear-gradient(135deg, #4a4a4a 0%, #3a3a3a 100%)',
+                    boxShadow: '0 4px 15px rgba(0,0,0,0.2)',
+                  }}
                 >
                   <Search size={16} />
                   {t.settings?.storage_browse || "Browse"}
@@ -252,7 +270,7 @@ export default function Settings({ userName, setUserName, language, setLanguage 
           {/* IDENTITY */}
           <div className={`md:col-span-2 p-8 rounded-[32px] border transition-all ${isDarkMode ? 'bg-[#0A0A0A] border-white/5' : 'bg-white border-slate-200 shadow-sm'}`}>
             <div className="flex items-center gap-4 mb-8">
-              <User className="text-indigo-500" size={22} />
+              <User className={isDarkMode ? 'text-gray-400' : 'text-gray-500'} size={22} />
               <h2 className="text-sm font-black uppercase tracking-widest">{t.settings?.identity_title || "IDENTITY"}</h2>
             </div>
             
@@ -263,13 +281,19 @@ export default function Settings({ userName, setUserName, language, setLanguage 
                   type="text" 
                   value={settings.userName} 
                   onChange={(e) => setSettings({...settings, userName: e.target.value})}
-                  className={`w-full border rounded-2xl px-6 py-4 font-bold outline-none focus:border-indigo-500 transition-all ${isDarkMode ? 'bg-black/40 border-white/10 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`} 
+                  className={`w-full border rounded-2xl px-6 py-4 font-bold outline-none focus:border-gray-400 transition-all ${isDarkMode ? 'bg-black/40 border-white/10 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`} 
                 />
               </div>
               <button 
                 onClick={saveSettings} 
                 disabled={isSaving} 
-                className="px-10 py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center gap-3 min-w-[200px] justify-center shadow-lg shadow-indigo-600/20 active:scale-95 disabled:opacity-50"
+                className="px-10 py-4 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center gap-3 min-w-[200px] justify-center shadow-lg active:scale-95 disabled:opacity-50 hover:scale-105"
+                style={{
+                  background: isDarkMode 
+                    ? 'linear-gradient(135deg, #3a3a3a 0%, #2a2a2a 100%)'
+                    : 'linear-gradient(135deg, #4a4a4a 0%, #3a3a3a 100%)',
+                  boxShadow: '0 4px 20px rgba(0,0,0,0.25)',
+                }}
               >
                 {isSaving ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />}
                 {isSaving ? (t.settings?.syncing || "SYNCING") : (t.settings?.save_btn || "SAVE")}
@@ -277,11 +301,19 @@ export default function Settings({ userName, setUserName, language, setLanguage 
             </div>
           </div>
 
+          {/* ACCÈS DISTANT / REMOTE ACCESS */}
+          <div className="md:col-span-2">
+            <RemoteAccess 
+              language={settings.language} 
+              isDarkMode={isDarkMode} 
+            />
+          </div>
+
         </div>
         
         {/* Version Footer */}
         <div className={`text-center pt-8 ${isDarkMode ? 'text-white/20' : 'text-slate-300'}`}>
-          <p className="text-xs font-mono">Horizon AI v1.0 • {language === 'fr' ? 'Construit avec' : 'Built with'} ❤️</p>
+          <p className="text-xs font-mono">Horizon AI v1.0 •  </p>
         </div>
       </div>
     </div>
@@ -292,14 +324,14 @@ export default function Settings({ userName, setUserName, language, setLanguage 
 const SectionContainer = ({ children, title, icon: Icon, isDarkMode }) => (
   <div className={`p-8 rounded-[32px] border transition-all ${isDarkMode ? 'bg-[#0A0A0A] border-white/5' : 'bg-white border-slate-200 shadow-sm'}`}>
     <div className="flex items-center gap-4 mb-8">
-      <Icon className="text-indigo-500" size={22} />
+      <Icon className={isDarkMode ? 'text-gray-400' : 'text-gray-500'} size={22} />
       <h2 className="text-sm font-black uppercase tracking-widest">{title}</h2>
     </div>
     {children}
   </div>
 );
 
-const ToggleRow = ({ icon: Icon, label, description, active, onClick, color = "bg-indigo-600", isDarkMode, disabled = false }) => (
+const ToggleRow = ({ icon: Icon, label, description, active, onClick, color = "bg-gray-500", isDarkMode, disabled = false }) => (
   <div className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${isDarkMode ? 'bg-black/20 border-white/5' : 'bg-slate-50 border-slate-200 shadow-sm'} ${disabled ? 'opacity-50' : ''}`}>
     <div className="flex items-center gap-3">
       {Icon && <Icon size={16} className={active ? "text-emerald-500" : "opacity-20"} />}
@@ -312,7 +344,7 @@ const ToggleRow = ({ icon: Icon, label, description, active, onClick, color = "b
   </div>
 );
 
-const Toggle = ({ active, onClick, color = "bg-indigo-600", disabled = false }) => (
+const Toggle = ({ active, onClick, color = "bg-gray-500", disabled = false }) => (
   <button 
     onClick={onClick} 
     disabled={disabled}

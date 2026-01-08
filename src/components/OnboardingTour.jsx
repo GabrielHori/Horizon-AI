@@ -8,70 +8,55 @@ import {
   Settings, 
   Cpu,
   LayoutDashboard,
-  MousePointer,
   Zap
 } from 'lucide-react';
 
-/**
- * OnboardingTour - Guide interactif au premier lancement
- * 
- * Affiche une série de slides expliquant les fonctionnalités
- * S'affiche uniquement au premier lancement (stocké dans localStorage)
- */
 const OnboardingTour = ({ onComplete, language = 'fr' }) => {
   const [currentStep, setCurrentStep] = useState(0);
   const [isVisible, setIsVisible] = useState(false);
 
-  // Vérifier si c'est le premier lancement
   useEffect(() => {
     const hasSeenTour = localStorage.getItem('horizon_onboarding_complete');
     if (!hasSeenTour) {
-      // Délai pour laisser l'app se charger
       setTimeout(() => setIsVisible(true), 1500);
     }
   }, []);
 
-  // Contenu du tour
   const steps = [
     {
-      icon: <Sparkles size={48} className="text-indigo-400" />,
+      icon: <Sparkles size={48} className="text-white" />,
       title: language === 'fr' ? 'Bienvenue sur Horizon AI !' : 'Welcome to Horizon AI!',
       description: language === 'fr' 
         ? 'Votre assistant IA local, 100% privé. Aucune donnée n\'est envoyée sur internet.'
-        : 'Your local AI assistant, 100% private. No data is sent to the internet.',
-      highlight: null
+        : 'Your local IA assistant, 100% private. No data is sent to the internet.',
     },
     {
-      icon: <LayoutDashboard size={48} className="text-indigo-400" />,
+      icon: <LayoutDashboard size={48} className="text-white" />,
       title: language === 'fr' ? 'Tableau de bord' : 'Dashboard',
       description: language === 'fr'
         ? 'Votre page d\'accueil. Posez des questions rapides, installez des modèles IA, et accédez à toutes les fonctionnalités.'
         : 'Your home page. Ask quick questions, install AI models, and access all features.',
-      highlight: 'dashboard'
     },
     {
-      icon: <MessageSquare size={48} className="text-indigo-400" />,
+      icon: <MessageSquare size={48} className="text-white" />,
       title: language === 'fr' ? 'Assistant IA' : 'AI Assistant',
       description: language === 'fr'
         ? 'Le chat complet avec historique. Vos conversations sont sauvegardées automatiquement.'
         : 'Full chat with history. Your conversations are saved automatically.',
-      highlight: 'chat'
     },
     {
-      icon: <Cpu size={48} className="text-indigo-400" />,
+      icon: <Cpu size={48} className="text-white" />,
       title: language === 'fr' ? 'Sélection du modèle' : 'Model Selection',
       description: language === 'fr'
         ? 'Choisissez votre modèle IA en haut de l\'écran. Différents modèles pour différents usages !'
         : 'Choose your AI model at the top. Different models for different uses!',
-      highlight: 'model'
     },
     {
-      icon: <Settings size={48} className="text-indigo-400" />,
+      icon: <Settings size={48} className="text-white" />,
       title: language === 'fr' ? 'Paramètres' : 'Settings',
       description: language === 'fr'
         ? 'Personnalisez votre expérience : langue, nom d\'utilisateur, et plus encore.'
         : 'Customize your experience: language, username, and more.',
-      highlight: 'settings'
     },
     {
       icon: <Zap size={48} className="text-yellow-400" />,
@@ -79,7 +64,6 @@ const OnboardingTour = ({ onComplete, language = 'fr' }) => {
       description: language === 'fr'
         ? 'Vous êtes prêt à utiliser Horizon AI. Commencez par poser une question !'
         : 'You\'re ready to use Horizon AI. Start by asking a question!',
-      highlight: null
     }
   ];
 
@@ -116,122 +100,113 @@ const OnboardingTour = ({ onComplete, language = 'fr' }) => {
   const isFirstStep = currentStep === 0;
 
   return (
-    <div className="fixed inset-0 z-[300] flex items-center justify-center">
-      {/* Overlay sombre */}
+    <div className="fixed inset-0 z-[300] flex items-center justify-center animate-liquid-enter">
+      {/* Overlay sombre avec blur intense */}
       <div 
-        className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/80 backdrop-blur-md"
         onClick={handleSkip}
       />
       
-      {/* Carte principale */}
-      <div className="relative z-10 w-[500px] max-w-[90vw] bg-gradient-to-br from-slate-900 to-slate-950 rounded-[32px] border border-white/10 shadow-2xl overflow-hidden">
+      {/* Carte principale stylisée Liquid Metal */}
+      <div className="relative z-10 w-[500px] max-w-[90vw] glass-panel rounded-[32px] border border-white/10 shadow-2xl overflow-hidden prism-edge">
         
-        {/* Bouton fermer */}
+        {/* Bouton fermer chrome */}
         <button
           onClick={handleSkip}
-          className="absolute top-4 right-4 p-2 rounded-full hover:bg-white/10 transition-colors text-white/40 hover:text-white"
+          className="absolute top-6 right-6 z-20 p-2 rounded-full hover:bg-white/10 transition-colors text-white/40 hover:text-white"
         >
           <X size={20} />
         </button>
 
-        {/* Header avec animation */}
-        <div className="relative h-48 bg-gradient-to-br from-indigo-600/20 to-purple-600/20 flex items-center justify-center overflow-hidden">
-          {/* Cercles décoratifs */}
-          <div className="absolute inset-0">
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-indigo-500/20 rounded-full blur-3xl animate-pulse" />
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 bg-purple-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '0.5s' }} />
+        {/* Header avec fond Métal Liquide & Prism */}
+        <div className="relative h-56 bg-void-200 flex items-center justify-center overflow-hidden">
+          {/* Blobs d'arrière-plan animés */}
+          <div className="absolute inset-0 opacity-30">
+            <div className="absolute top-1/2 left-1/4 w-40 h-40 bg-indigo-500 rounded-full blur-[80px] animate-liquid-drift" />
+            <div className="absolute bottom-1/4 right-1/4 w-40 h-40 bg-purple-600 rounded-full blur-[80px] animate-liquid-drift animation-delay-2000" />
           </div>
           
-          {/* Icône centrale */}
-          <div className="relative z-10 p-6 rounded-[28px] bg-white/5 border border-white/10 backdrop-blur-xl animate-bounce-slow">
-            {step.icon}
+          {/* Icône avec effet miroir / chrome */}
+          <div className="relative z-10 p-8 rounded-[32px] bg-metal-200 border border-white/10 backdrop-blur-2xl shadow-2xl animate-float">
+            <div className="text-chrome">
+                {step.icon}
+            </div>
+            {/* Lueur sous l'icône */}
+            <div className="absolute inset-0 bg-white/5 rounded-[32px] animate-pulse" />
           </div>
         </div>
 
-        {/* Contenu */}
-        <div className="p-8 text-center">
-          <h2 className="text-2xl font-black text-white mb-4">
+        {/* Contenu textuel */}
+        <div className="p-10 text-center relative">
+          <h2 className="text-2xl font-black text-white mb-4 tracking-tight">
             {step.title}
           </h2>
           
-          <p className="text-white/60 text-sm leading-relaxed mb-8 px-4">
+          <p className="text-white/50 text-sm leading-relaxed mb-10 px-4 font-medium">
             {step.description}
           </p>
 
-          {/* Indicateurs de progression */}
-          <div className="flex justify-center gap-2 mb-8">
+          {/* Indicateurs de progression (Prism) */}
+          <div className="flex justify-center gap-2.5 mb-10">
             {steps.map((_, index) => (
               <button
                 key={index}
                 onClick={() => setCurrentStep(index)}
-                className={`w-2 h-2 rounded-full transition-all ${
+                className={`h-1.5 rounded-full transition-all duration-500 ${
                   index === currentStep 
-                    ? 'w-8 bg-indigo-500' 
+                    ? 'w-10 bg-gradient-to-r from-cyan-400 via-indigo-500 to-magenta-400 shadow-[0_0_15px_rgba(99,102,241,0.5)]' 
                     : index < currentStep 
-                      ? 'bg-indigo-500/50' 
-                      : 'bg-white/20'
+                      ? 'w-2 bg-indigo-500/40' 
+                      : 'w-2 bg-white/10'
                 }`}
               />
             ))}
           </div>
 
-          {/* Boutons de navigation */}
+          {/* Boutons de navigation - Style Chrome */}
           <div className="flex items-center justify-between gap-4">
-            {/* Bouton Précédent */}
             <button
               onClick={handlePrev}
               disabled={isFirstStep}
-              className={`flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold transition-all ${
+              className={`flex items-center gap-2 px-6 py-3 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${
                 isFirstStep 
                   ? 'opacity-0 pointer-events-none' 
-                  : 'text-white/60 hover:text-white hover:bg-white/5'
+                  : 'text-white/40 hover:text-white hover:bg-white/5'
               }`}
             >
-              <ChevronLeft size={18} />
-              {language === 'fr' ? 'Précédent' : 'Previous'}
+              <ChevronLeft size={16} />
+              {language === 'fr' ? 'Retour' : 'Back'}
             </button>
 
-            {/* Bouton Suivant / Terminer */}
             <button
               onClick={handleNext}
-              className="flex items-center gap-2 px-8 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold transition-all shadow-lg shadow-indigo-600/30 active:scale-95"
+              className="btn-chrome flex items-center gap-3 px-8 py-3.5 rounded-xl text-white text-xs font-black uppercase tracking-widest shadow-xl active:scale-95"
             >
               {isLastStep ? (
                 <>
-                  <Sparkles size={18} />
-                  {language === 'fr' ? 'Commencer' : 'Start'}
+                  <Sparkles size={16} className="text-cyan-400" />
+                  {language === 'fr' ? 'Lancer' : 'Launch'}
                 </>
               ) : (
                 <>
                   {language === 'fr' ? 'Suivant' : 'Next'}
-                  <ChevronRight size={18} />
+                  <ChevronRight size={16} />
                 </>
               )}
             </button>
           </div>
 
-          {/* Lien passer */}
+          {/* Skip link discret */}
           {!isLastStep && (
             <button
               onClick={handleSkip}
-              className="mt-4 text-white/30 text-xs hover:text-white/60 transition-colors"
+              className="mt-8 text-white/20 text-[10px] uppercase tracking-[0.2em] hover:text-white/50 transition-colors"
             >
-              {language === 'fr' ? 'Passer le tutoriel' : 'Skip tutorial'}
+              {language === 'fr' ? 'Passer' : 'Skip'}
             </button>
           )}
         </div>
       </div>
-
-      {/* Style pour animation lente */}
-      <style>{`
-        @keyframes bounce-slow {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-10px); }
-        }
-        .animate-bounce-slow {
-          animation: bounce-slow 3s ease-in-out infinite;
-        }
-      `}</style>
     </div>
   );
 };

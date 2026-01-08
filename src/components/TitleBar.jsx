@@ -3,17 +3,10 @@ import { invoke } from '@tauri-apps/api/core';
 import { Minus, Square, X, Copy } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 
-/**
- * TitleBar - Barre de titre personnalisée
- * 
- * Remplace la barre de titre Windows native pour un design cohérent
- * avec l'identité visuelle de Horizon AI
- */
 const TitleBar = () => {
   const { isDarkMode } = useTheme();
   const [isMaximized, setIsMaximized] = useState(false);
 
-  // Vérifier l'état de la fenêtre au chargement
   useEffect(() => {
     const checkMaximized = async () => {
       try {
@@ -27,104 +20,85 @@ const TitleBar = () => {
   }, []);
 
   const handleMinimize = async () => {
-    try {
-      await invoke('minimize_window');
-    } catch (e) {
-      console.error('TitleBar: minimize error', e);
-    }
+    try { await invoke('minimize_window'); } catch (e) { console.error(e); }
   };
 
   const handleMaximize = async () => {
     try {
       const newState = await invoke('toggle_maximize');
       setIsMaximized(newState);
-    } catch (e) {
-      console.error('TitleBar: maximize error', e);
-    }
+    } catch (e) { console.error(e); }
   };
 
   const handleClose = async () => {
-    try {
-      await invoke('close_window');
-    } catch (e) {
-      console.error('TitleBar: close error', e);
-    }
+    try { await invoke('close_window'); } catch (e) { console.error(e); }
   };
 
   return (
-    <div 
-      className={`h-9 flex items-center justify-between select-none
-        ${isDarkMode 
-          ? 'bg-black/80 border-b border-white/5' 
-          : 'bg-slate-100 border-b border-slate-200'}
-      `}
-      // Zone draggable pour déplacer la fenêtre
+    <div
       data-tauri-drag-region
+      className={`fixed top-0 left-0 w-full z-[99999] h-9 flex items-center justify-between select-none backdrop-blur-md transition-all duration-300
+        ${isDarkMode
+          ? 'bg-black/40 border-b border-white/5 text-white'
+          : 'bg-white/60 border-b border-slate-200 text-slate-800'}
+      `}
     >
-      {/* Logo et titre */}
-      <div className="flex items-center gap-3 px-4" data-tauri-drag-region>
-        {/* Logo petit */}
-        <div className="w-5 h-5 rounded-md bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
-          <span className="text-white text-[9px] font-black">H</span>
-        </div>
-        
-        {/* Titre */}
-        <span 
-          className={`text-[11px] font-bold uppercase tracking-[0.2em]
-            ${isDarkMode ? 'text-white/60' : 'text-slate-600'}
-          `}
-          data-tauri-drag-region
+      {/* Section Gauche : Logo & Titre */}
+      <div className="flex items-center gap-3 px-4 h-full flex-grow cursor-default" data-tauri-drag-region>
+        <div
+          className="w-5 h-5 rounded flex items-center justify-center shadow-[0_0_10px_rgba(0,0,0,0.5)]"
+          style={{
+            background: isDarkMode
+              ? 'linear-gradient(135deg, #444 0%, #111 100%)'
+              : 'linear-gradient(135deg, #fff 0%, #ccc 100%)',
+            border: isDarkMode ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.1)',
+          }}
         >
+          <span className={`text-[10px] font-black ${isDarkMode ? 'text-white' : 'text-slate-700'}`}>H</span>
+        </div>
+
+        <span className={`text-[10px] font-bold uppercase tracking-[0.3em] opacity-80 ${isDarkMode ? 'text-white' : 'text-slate-600'}`}>
           Horizon AI
         </span>
       </div>
 
-      {/* Boutons de fenêtre */}
-      <div className="flex items-center h-full">
-        {/* Minimiser */}
+      {/* Section Droite : Boutons de contrôle */}
+      <div className="flex items-center h-full px-1">
+        
+        {/* Bouton Réduire */}
         <button
           onClick={handleMinimize}
-          className={`w-12 h-full flex items-center justify-center transition-colors duration-150
-            ${isDarkMode 
-              ? 'hover:bg-white/10 text-white/40 hover:text-white/80' 
-              : 'hover:bg-slate-200 text-slate-400 hover:text-slate-600'}
-          `}
-          title="Réduire"
+          className={`group w-10 h-7 flex items-center justify-center rounded-md transition-all duration-200
+            ${isDarkMode ? 'hover:bg-white/10' : 'hover:bg-black/5'}`}
         >
-          <Minus size={14} strokeWidth={2} />
+          <Minus size={14} strokeWidth={2} className="opacity-60 group-hover:opacity-100 transition-opacity" />
         </button>
 
-        {/* Maximiser/Restaurer */}
+        {/* Bouton Agrandir / Restaurer */}
         <button
           onClick={handleMaximize}
-          className={`w-12 h-full flex items-center justify-center transition-colors duration-150
-            ${isDarkMode 
-              ? 'hover:bg-white/10 text-white/40 hover:text-white/80' 
-              : 'hover:bg-slate-200 text-slate-400 hover:text-slate-600'}
-          `}
-          title={isMaximized ? "Restaurer" : "Agrandir"}
+          className={`group w-10 h-7 flex items-center justify-center rounded-md transition-all duration-200
+            ${isDarkMode ? 'hover:bg-white/10' : 'hover:bg-black/5'}`}
         >
           {isMaximized ? (
-            // Icône restaurer (deux carrés superposés)
-            <Copy size={12} strokeWidth={2} />
+            <Copy size={13} strokeWidth={2} className="opacity-60 group-hover:opacity-100 transition-opacity" />
           ) : (
-            // Icône maximiser (carré simple)
-            <Square size={12} strokeWidth={2} />
+            <Square size={13} strokeWidth={2} className="opacity-60 group-hover:opacity-100 transition-opacity" />
           )}
         </button>
 
-        {/* Fermer */}
+        {/* Bouton Fermer */}
         <button
           onClick={handleClose}
-          className={`w-12 h-full flex items-center justify-center transition-colors duration-150
-            ${isDarkMode 
-              ? 'hover:bg-red-500 text-white/40 hover:text-white' 
-              : 'hover:bg-red-500 text-slate-400 hover:text-white'}
-          `}
-          title="Fermer"
+          className={`group w-10 h-7 flex items-center justify-center rounded-md transition-all duration-300
+            ${isDarkMode ? 'hover:bg-red-500/80' : 'hover:bg-red-500'} `}
         >
-          <X size={14} strokeWidth={2} />
+          <X size={15} strokeWidth={2} 
+             className={`transition-all duration-200 
+             ${isDarkMode ? 'opacity-60 group-hover:opacity-100' : 'opacity-50 group-hover:text-white group-hover:opacity-100'}`} 
+          />
         </button>
+        
       </div>
     </div>
   );

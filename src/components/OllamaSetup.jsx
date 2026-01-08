@@ -6,12 +6,7 @@ import { requestWorker, setupStreamListener } from '../services/bridge';
 
 /**
  * OllamaSetup - Écran de premier lancement TRANSPARENT
- * 
- * PHILOSOPHIE:
- * - L'utilisateur ne doit JAMAIS savoir ce qu'est Ollama
- * - Tout doit se faire automatiquement
- * - Les messages sont simples et non-techniques
- * - L'installation est silencieuse et progressive
+ * Design: Dark Liquid Metal & Prism
  */
 const OllamaSetup = ({ onComplete, language = 'fr' }) => {
   // États du processus global
@@ -22,7 +17,7 @@ const OllamaSetup = ({ onComplete, language = 'fr' }) => {
   const [subMessage, setSubMessage] = useState('');
   const hasStartedRef = useRef(false);
 
-  // Messages simples pour l'utilisateur (SANS jargon technique)
+  // Messages simples pour l'utilisateur
   const messages = {
     init: language === 'fr' ? 'Bienvenue' : 'Welcome',
     checking: language === 'fr' ? 'Vérification du système...' : 'Checking system...',
@@ -54,7 +49,6 @@ const OllamaSetup = ({ onComplete, language = 'fr' }) => {
 
   const runSetupFlow = async () => {
     try {
-      // PHASE 1: Vérification
       setPhase('checking');
       setProgress(10);
       setSubMessage(subMessages.checking);
@@ -62,12 +56,17 @@ const OllamaSetup = ({ onComplete, language = 'fr' }) => {
       const isInstalled = await checkOllamaInstalled();
       
       if (isInstalled) {
-        // Ollama est déjà installé - vérifier s'il tourne
         setProgress(30);
+
+        // 🔹 AJOUT CLOUDLFARED
+        const cloudflaredInstalled = await installCloudflaredAuto();
+        if (cloudflaredInstalled) {
+          setProgress(35);
+        }
+
         const isRunning = await checkOllamaRunning();
         
         if (!isRunning) {
-          // Démarrer Ollama silencieusement
           setPhase('starting');
           setSubMessage(subMessages.starting);
           await startOllama();
@@ -76,17 +75,14 @@ const OllamaSetup = ({ onComplete, language = 'fr' }) => {
           setProgress(50);
         }
 
-        // Vérifier si un modèle existe
         const hasModel = await checkHasModel();
         
         if (!hasModel) {
-          // Télécharger un modèle par défaut
           setPhase('pulling');
           setSubMessage(subMessages.pulling);
           await pullDefaultModel();
         }
         
-        // TERMINÉ !
         setPhase('ready');
         setProgress(100);
         setSubMessage(subMessages.ready);
@@ -97,53 +93,43 @@ const OllamaSetup = ({ onComplete, language = 'fr' }) => {
         }, 1500);
         
       } else {
-        // Ollama n'est pas installé - INSTALLER AUTOMATIQUEMENT
         setPhase('installing');
         setSubMessage(subMessages.installing);
         setProgress(15);
-        
         await installOllamaAuto();
-        // Le reste du flow se fait via les events d'installation
       }
 
     } catch (error) {
       console.error('[OllamaSetup] Error:', error);
-      // En cas d'erreur, on laisse continuer quand même
       setTimeout(() => onComplete(), 2000);
     }
   };
 
-  // =============================================
-  // FONCTIONS UTILITAIRES
-  // =============================================
-
   const checkOllamaInstalled = async () => {
-    try {
-      return await invoke('check_ollama_installed');
-    } catch {
-      return false;
+    try { 
+      return await invoke('check_ollama_installed'); 
+    } catch { 
+      return false; 
     }
   };
 
   const checkOllamaRunning = async () => {
     try {
-      // Tester si Ollama répond
       const response = await fetch('http://localhost:11434/api/tags', { 
         signal: AbortSignal.timeout(3000) 
       });
       return response.ok;
-    } catch {
-      return false;
+    } catch { 
+      return false; 
     }
   };
 
   const startOllama = async () => {
     try {
       await invoke('start_ollama');
-      // Attendre que le service soit prêt
       await waitForOllama();
-    } catch (e) {
-      console.warn('[OllamaSetup] start_ollama error:', e);
+    } catch (e) { 
+      console.warn('[OllamaSetup] start_ollama error:', e); 
     }
   };
 
@@ -161,25 +147,23 @@ const OllamaSetup = ({ onComplete, language = 'fr' }) => {
       const response = await requestWorker("get_models");
       const models = Array.isArray(response) ? response : response?.models || [];
       return models.length > 0;
-    } catch {
-      return false;
+    } catch { 
+      return false; 
     }
   };
 
   const pullDefaultModel = async () => {
-    // Modèle par défaut léger et performant
     const defaultModel = 'llama3.2:3b';
-    
     try {
       await requestWorker("pull", { model: defaultModel });
-    } catch (e) {
-      console.warn('[OllamaSetup] pull error:', e);
+    } catch (e) { 
+      console.warn('[OllamaSetup] pull error:', e); 
     }
   };
 
   const installOllamaAuto = async () => {
-    try {
-      await invoke('install_ollama');
+    try { 
+      await invoke('install_ollama'); 
     } catch (e) {
       console.error('[OllamaSetup] install error:', e);
       setPhase('error');
@@ -187,17 +171,29 @@ const OllamaSetup = ({ onComplete, language = 'fr' }) => {
   };
 
   // =============================================
-  // ÉCOUTER LES ÉVÉNEMENTS D'INSTALLATION
+  // AJOUT : INSTALLATION AUTOMATIQUE CLOUDFLARED
   // =============================================
+  const installCloudflaredAuto = async () => {
+    try {
+      const cloudflaredStatus = await requestWorker("tunnel_get_status");
+      if (!cloudflaredStatus?.cloudflared_installed) {
+        await requestWorker("tunnel_install_cloudflared");
+        return true;
+      }
+      return true;
+    } catch (error) {
+      console.warn('[OllamaSetup] Cloudflared install error:', error);
+      return false;
+    }
+  };
+
   useEffect(() => {
     let unlistenInstall = null;
     let unlistenStream = null;
 
     const setupListeners = async () => {
-      // Événements d'installation Ollama (côté Rust)
       unlistenInstall = await listen('ollama-install-status', async (event) => {
         const { status } = event.payload;
-        
         if (status === 'downloading') {
           setProgress(30);
           setSubMessage(language === 'fr' ? 'Téléchargement en cours...' : 'Downloading...');
@@ -208,117 +204,136 @@ const OllamaSetup = ({ onComplete, language = 'fr' }) => {
           setProgress(70);
           setPhase('starting');
           setSubMessage(subMessages.starting);
-          
-          // Démarrer Ollama après installation
           await startOllama();
           setProgress(80);
-          
-          // Télécharger le modèle par défaut
           setPhase('pulling');
           setSubMessage(subMessages.pulling);
           await pullDefaultModel();
-          
-          // TERMINÉ
           setPhase('ready');
           setProgress(100);
           setSubMessage(subMessages.ready);
-          
           setTimeout(() => {
             setPhase('complete');
             onComplete();
           }, 1500);
         } else if (status === 'error') {
-          // Laisser continuer quand même (mode dégradé)
-          console.warn('[OllamaSetup] Installation failed, continuing anyway');
           setTimeout(() => onComplete(), 1000);
         }
       });
 
-      // Événements de téléchargement de modèle (côté Python)
       unlistenStream = await setupStreamListener((payload) => {
         if (payload.model && payload.event === 'progress') {
           const prog = payload.progress || 0;
-          // Mapper le progress du pull entre 80% et 95%
           setProgress(80 + (prog * 0.15));
           setSubMessage(`${language === 'fr' ? 'Téléchargement' : 'Downloading'}: ${prog}%`);
         }
-        if (payload.model && payload.event === 'done') {
-          setProgress(95);
+        if (payload.model && payload.event === 'done') { 
+          setProgress(95); 
         }
       });
     };
 
     setupListeners();
-
     return () => {
       if (unlistenInstall) unlistenInstall();
       if (unlistenStream) unlistenStream();
     };
   }, [onComplete, language]);
 
-  // =============================================
-  // RENDER - UI MINIMALISTE ET ÉLÉGANTE
-  // =============================================
-
-  // Si déjà complété, ne rien afficher
   if (phase === 'complete') return null;
 
   const isLoading = ['init', 'checking', 'installing', 'starting', 'pulling'].includes(phase);
   const isReady = phase === 'ready';
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-950">
-      {/* Effet de fond animé */}
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black">
+      {/* Fond avec ondes métalliques */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-1/2 -left-1/2 w-full h-full bg-gradient-radial from-indigo-500/10 to-transparent animate-pulse" />
-        <div className="absolute -bottom-1/2 -right-1/2 w-full h-full bg-gradient-radial from-purple-500/10 to-transparent animate-pulse" style={{ animationDelay: '1s' }} />
+        <div 
+          className="absolute -top-1/2 -left-1/2 w-full h-full animate-pulse opacity-20"
+          style={{ background: 'radial-gradient(ellipse, rgba(60,60,60,0.4) 0%, transparent 70%)' }}
+        />
+        <div 
+          className="absolute -bottom-1/2 -right-1/2 w-full h-full animate-pulse opacity-20"
+          style={{ background: 'radial-gradient(ellipse, rgba(80,80,80,0.3) 0%, transparent 70%)', animationDelay: '1s' }}
+        />
       </div>
 
-      {/* Contenu centré */}
-      <div className="relative z-10 w-[420px] text-center">
+      {/* Contenu principal - PB-20 ajouté pour protéger le footer */}
+      <div className="relative z-10 w-[420px] text-center pb-20">
         
-        {/* Logo avec animation */}
+        {/* Logo Métal */}
         <div className="flex justify-center mb-10">
-          <div className={`relative p-8 rounded-[32px] bg-gradient-to-br from-indigo-500 to-purple-600 shadow-2xl shadow-indigo-500/40 ${isLoading ? 'animate-pulse' : ''}`}>
+          <div 
+            className={`relative p-8 rounded-[32px] ${isLoading ? 'animate-pulse' : ''}`}
+            style={{
+              background: isReady 
+                ? 'linear-gradient(135deg, rgba(34, 197, 94, 0.2) 0%, rgba(22, 163, 74, 0.3) 100%)'
+                : 'linear-gradient(135deg, rgba(60, 60, 60, 0.8) 0%, rgba(30, 30, 30, 0.9) 100%)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              boxShadow: isReady 
+                ? '0 0 60px rgba(34, 197, 94, 0.3), inset 0 1px 0 rgba(255,255,255,0.1)'
+                : '0 0 60px rgba(100,100,100,0.2), inset 0 1px 0 rgba(255,255,255,0.1)',
+            }}
+          >
+            <div 
+              className="absolute inset-0 rounded-[32px] pointer-events-none"
+              style={{
+                background: 'linear-gradient(135deg, transparent 30%, rgba(255,100,100,0.1) 40%, rgba(255,200,50,0.1) 50%, rgba(100,255,100,0.1) 60%, rgba(100,200,255,0.1) 70%, transparent 80%)',
+                opacity: isLoading ? 1 : 0,
+                transition: 'opacity 0.5s',
+              }}
+            />
+            
             {isReady ? (
-              <CheckCircle size={56} className="text-white" />
+              <CheckCircle size={56} className="text-emerald-400" />
             ) : (
-              <Cpu size={56} className="text-white" />
+              <Cpu size={56} className="text-white/80" />
             )}
             
-            {/* Particules autour du logo */}
+            <div className="absolute top-2 left-3 w-[60%] h-[40%] rounded-full pointer-events-none" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 60%)' }} />
+            
             {isReady && (
               <>
-                <Sparkles size={16} className="absolute -top-2 -right-2 text-yellow-400 animate-bounce" />
-                <Sparkles size={12} className="absolute -bottom-1 -left-1 text-indigo-300 animate-bounce" style={{ animationDelay: '0.2s' }} />
+                <Sparkles size={16} className="absolute -top-2 -right-2 text-emerald-400 animate-bounce" />
+                <Sparkles size={12} className="absolute -bottom-1 -left-1 text-cyan-400 animate-bounce" style={{ animationDelay: '0.2s' }} />
               </>
             )}
           </div>
         </div>
 
-        {/* Message principal */}
-        <h1 className="text-3xl font-black text-white mb-3 tracking-wide">
+        {/* Titre Chrome */}
+        <h1 
+          className="text-3xl font-black mb-3 tracking-wide"
+          style={{
+            background: 'linear-gradient(180deg, #ffffff 0%, #888888 40%, #ffffff 50%, #666666 60%, #aaaaaa 100%)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            backgroundClip: 'text',
+          }}
+        >
           {messages[phase] || messages.checking}
         </h1>
 
-        {/* Sous-message */}
-        <p className="text-white/50 text-sm mb-10 font-medium h-6">
+        <p className="text-white/40 text-sm mb-10 font-medium h-6">
           {subMessage || subMessages[phase]}
         </p>
 
-        {/* Barre de progression (visible sauf si prêt) */}
+        {/* Barre de progression Mercury */}
         {isLoading && (
           <div className="w-full max-w-xs mx-auto">
-            <div className="w-full h-2 rounded-full bg-white/10 overflow-hidden">
+            <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.05)', boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.3)' }}>
               <div 
-                className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 transition-all duration-700 ease-out"
-                style={{ width: `${progress}%` }}
+                className="h-full rounded-full transition-all duration-700 ease-out"
+                style={{ 
+                  width: `${progress}%`,
+                  background: 'linear-gradient(90deg, #ff6b6b, #ffd93d, #6bcb77, #4d96ff, #9b59b6)',
+                  boxShadow: '0 0 15px rgba(255,200,100,0.4)',
+                }}
               />
             </div>
-            
-            {/* Indicateur de chargement discret - Plus espacé en dessous */}
             <div className="flex items-center justify-center gap-3 text-white/30 mt-6">
-              <Loader2 size={14} className="animate-spin" />
+              <Loader2 size={14} className="animate-spin text-gray-500" />
               <span className="text-[10px] font-bold uppercase tracking-widest">
                 {progress > 0 ? `${Math.round(progress)}%` : ''}
               </span>
@@ -326,21 +341,32 @@ const OllamaSetup = ({ onComplete, language = 'fr' }) => {
           </div>
         )}
 
-        {/* Message de succès */}
+        {/* Badge succès */}
         {isReady && (
           <div className="animate-fade-in">
-            <div className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
-              <CheckCircle size={16} />
-              <span className="text-xs font-bold uppercase tracking-wider">
+            <div className="inline-flex items-center gap-2 px-6 py-3 rounded-full" style={{ background: 'rgba(34, 197, 94, 0.1)', border: '1px solid rgba(34, 197, 94, 0.3)' }}>
+              <CheckCircle size={16} className="text-emerald-400" />
+              <span className="text-xs font-bold uppercase tracking-wider text-emerald-400">
                 {language === 'fr' ? 'Configuration terminée' : 'Setup complete'}
               </span>
             </div>
           </div>
         )}
+      </div>
 
-        {/* Footer discret */}
-        <p className="absolute bottom-8 left-1/2 -translate-x-1/2 text-white/15 text-[9px] font-medium">
-          Horizon AI • {language === 'fr' ? 'Propulsé par l\'IA locale' : 'Powered by local AI'}
+      {/* Footer Indépendant et Fixé en bas */}
+      <div className="fixed bottom-10 left-0 w-full text-center pointer-events-none">
+        <p 
+          className="text-[9px] font-medium uppercase tracking-[0.3em]"
+          style={{
+            background: 'linear-gradient(90deg, rgba(255,100,100,0.5), rgba(255,200,50,0.5), rgba(100,255,100,0.5), rgba(100,200,255,0.5))',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            backgroundClip: 'text',
+            opacity: 0.5,
+          }}
+        >
+          Horizon AI • {language === 'fr' ? "Propulsé par l'IA locale" : 'Powered by local AI'}
         </p>
       </div>
     </div>

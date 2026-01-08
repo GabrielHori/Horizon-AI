@@ -177,7 +177,7 @@ const FileManager = ({ language = 'fr' }) => {
               <p className="text-sm opacity-60 mb-2">
                 {t.delete_confirm_desc}
               </p>
-              <p className="text-lg font-bold text-indigo-500 mb-6">{modelToConfirm}</p>
+              <p className={`text-lg font-bold mb-6 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>{modelToConfirm}</p>
               <div className="grid grid-cols-2 gap-4">
                 <button
                   onClick={() => setShowConfirm(false)}
@@ -203,8 +203,13 @@ const FileManager = ({ language = 'fr' }) => {
       {/* HEADER */}
       <div className="mb-10">
         <div className="flex items-center gap-3 mb-2">
-          <div className="h-1 w-12 bg-indigo-500 rounded-full"></div>
-          <span className="text-indigo-500 font-black text-[10px] uppercase tracking-[0.4em]">
+          <div 
+            className="h-1 w-12 rounded-full"
+            style={{
+              background: 'linear-gradient(90deg, rgba(255,100,100,0.8), rgba(255,200,50,0.8), rgba(100,255,100,0.8), rgba(100,200,255,0.8))'
+            }}
+          />
+          <span className={`font-black text-[10px] uppercase tracking-[0.4em] ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
             {language === 'fr' ? 'GESTIONNAIRE' : 'MANAGER'}
           </span>
         </div>
@@ -218,7 +223,7 @@ const FileManager = ({ language = 'fr' }) => {
               ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-white border-slate-200 shadow-sm'}
             `}>
               <div className="flex items-center gap-2">
-                <Box size={16} className="text-indigo-500" />
+                <Box size={16} className={isDarkMode ? 'text-gray-400' : 'text-gray-500'} />
                 <span className="text-sm font-bold">{installedModels.length}</span>
                 <span className="text-xs opacity-50">{language === 'fr' ? 'modèles' : 'models'}</span>
               </div>
@@ -269,7 +274,7 @@ const FileManager = ({ language = 'fr' }) => {
           <button
             onClick={() => handleDownload(customModelName)}
             disabled={!customModelName.trim() || downloadingModel}
-            className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-bold uppercase hover:bg-indigo-500 disabled:opacity-30 transition-all flex items-center gap-2"
+            className={`px-4 py-2 rounded-xl text-xs font-bold uppercase disabled:opacity-30 transition-all flex items-center gap-2 ${isDarkMode ? 'btn-metal-dark text-white' : 'btn-metal-light text-gray-700'}`}
           >
             {downloadingModel === customModelName ? (
               <Loader2 size={14} className="animate-spin" />
@@ -283,19 +288,19 @@ const FileManager = ({ language = 'fr' }) => {
 
       {/* DOWNLOAD PROGRESS */}
       {downloadingModel && (
-        <div className={`mb-6 p-4 rounded-2xl border ${isDarkMode ? 'bg-indigo-500/10 border-indigo-500/30' : 'bg-indigo-50 border-indigo-200'}`}>
+        <div className={`mb-6 p-4 rounded-2xl border ${isDarkMode ? 'bg-gray-500/10 border-gray-500/30' : 'bg-gray-100 border-gray-300'}`}>
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-3">
-              <Loader2 size={16} className="animate-spin text-indigo-500" />
+              <Loader2 size={16} className="animate-spin text-gray-400" />
               <span className="text-sm font-bold">
                 {language === 'fr' ? 'Téléchargement de' : 'Downloading'} {downloadingModel}...
               </span>
             </div>
-            <span className="text-sm font-mono font-bold text-indigo-500">{downloadProgress}%</span>
+            <span className={`text-sm font-mono font-bold ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>{downloadProgress}%</span>
           </div>
           <div className="w-full h-2 rounded-full bg-white/10 overflow-hidden">
             <div 
-              className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 transition-all duration-300"
+              className="h-full bg-gradient-to-r from-gray-400 to-gray-500 transition-all duration-300"
               style={{ width: `${downloadProgress}%` }}
             />
           </div>
@@ -307,8 +312,8 @@ const FileManager = ({ language = 'fr' }) => {
         <div className={`p-16 rounded-[32px] border text-center
           ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-white border-slate-200 shadow-sm'}
         `}>
-          <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-indigo-500/10 flex items-center justify-center">
-            <Database size={40} className="text-indigo-500 opacity-50" />
+          <div className={`w-24 h-24 mx-auto mb-6 rounded-full flex items-center justify-center ${isDarkMode ? 'bg-gray-500/10' : 'bg-gray-200'}`}>
+            <Database size={40} className={isDarkMode ? 'text-gray-400 opacity-50' : 'text-gray-500 opacity-50'} />
           </div>
           <h3 className="text-xl font-black uppercase mb-2 opacity-40">
             {t.no_models}
@@ -326,7 +331,7 @@ const FileManager = ({ language = 'fr' }) => {
                 key={model}
                 onClick={() => handleDownload(model)}
                 disabled={downloadingModel}
-                className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-bold uppercase hover:bg-indigo-500 disabled:opacity-30 transition-all flex items-center gap-2"
+                className={`px-4 py-2 rounded-xl text-xs font-bold uppercase disabled:opacity-30 transition-all flex items-center gap-2 ${isDarkMode ? 'btn-metal-dark text-white' : 'btn-metal-light text-gray-700'}`}
               >
                 <Download size={12} />
                 {model}
@@ -372,8 +377,8 @@ const ModelCard = ({ model, icon, onDelete, isDarkMode, language, t }) => {
       onMouseLeave={() => setIsHovered(false)}
       className={`relative p-6 rounded-[24px] border transition-all duration-300 group
         ${isDarkMode 
-          ? 'bg-white/5 border-white/10 hover:border-indigo-500/50 hover:bg-indigo-500/5' 
-          : 'bg-white border-slate-200 shadow-sm hover:shadow-lg hover:border-indigo-300'}
+          ? 'bg-white/5 border-white/10 hover:border-gray-500/50 hover:bg-gray-500/5' 
+          : 'bg-white border-slate-200 shadow-sm hover:shadow-lg hover:border-gray-300'}
         ${isHovered ? 'scale-[1.02]' : ''}
       `}
     >
@@ -388,7 +393,7 @@ const ModelCard = ({ model, icon, onDelete, isDarkMode, language, t }) => {
       {/* Icon & Name */}
       <div className="flex items-start gap-4 mb-4">
         <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl
-          ${isDarkMode ? 'bg-indigo-500/10' : 'bg-indigo-50'}
+          ${isDarkMode ? 'bg-gray-500/10' : 'bg-gray-100'}
         `}>
           {icon}
         </div>
@@ -405,7 +410,7 @@ const ModelCard = ({ model, icon, onDelete, isDarkMode, language, t }) => {
         <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl
           ${isDarkMode ? 'bg-white/5' : 'bg-slate-100'}
         `}>
-          <HardDrive size={12} className="text-indigo-500" />
+          <HardDrive size={12} className={isDarkMode ? 'text-gray-400' : 'text-gray-500'} />
           <span className="text-xs font-bold">{model.size_gb} GB</span>
         </div>
       </div>

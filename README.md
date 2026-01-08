@@ -71,6 +71,15 @@
 - System monitoring (CPU, RAM, VRAM)
 - Model management (install/delete models)
 
+### 🌐 Remote Access (NEW!)
+- Access your local AI from your phone or another computer
+- Secure Cloudflare Tunnel (no port forwarding needed)
+- Token-based authentication
+- Rate limiting & IP allowlist
+- QR code for easy mobile setup
+
+📖 **[Full Documentation](docs/REMOTE_ACCESS.md)**
+
 ---
 
 ## 📸 Screenshots

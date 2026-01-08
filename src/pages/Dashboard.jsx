@@ -10,11 +10,14 @@ import {
   Zap,
   Box,
   Settings,
-  Cpu
+  Cpu,
+  MemoryStick,
+  Activity
 } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { requestWorker, setupStreamListener } from '../services/bridge';
 import { translations } from '../constants/translations';
+import LiquidGauge, { LiquidGaugeBar } from '../components/LiquidGauge';
 
 const Dashboard = ({ 
   systemStats, 
@@ -171,7 +174,7 @@ const Dashboard = ({
         
         {/* === WELCOME HEADER === */}
         <div className="text-center py-8">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-bold uppercase tracking-widest mb-6">
+          <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold uppercase tracking-widest mb-6 ${isDarkMode ? 'bg-gray-500/10 border border-gray-500/20 text-gray-400' : 'bg-gray-200 border border-gray-300 text-gray-600'}`}>
             <Sparkles size={14} />
             {healthStatus === 'healthy' 
               ? (language === 'fr' ? 'Système Prêt' : 'System Ready')
@@ -179,7 +182,7 @@ const Dashboard = ({
           </div>
           
           <h1 className="text-4xl md:text-5xl font-black tracking-tight mb-3">
-            {getGreeting()}, <span className="text-indigo-500">{userName}</span>
+            {getGreeting()}, <span className={isDarkMode ? 'text-gray-300' : 'text-gray-700'}>{userName}</span>
           </h1>
           
           <p className={`text-lg ${isDarkMode ? 'text-white/50' : 'text-slate-500'}`}>
@@ -203,7 +206,7 @@ const Dashboard = ({
             >
               {isThinking && !quickResponse && (
                 <div className="flex items-center gap-3">
-                  <Loader2 size={16} className="animate-spin text-indigo-500" />
+                  <Loader2 size={16} className="animate-spin text-gray-400" />
                   <span className="text-sm opacity-60">
                     {language === 'fr' ? 'Réflexion en cours...' : 'Thinking...'}
                   </span>
@@ -215,7 +218,7 @@ const Dashboard = ({
               {quickResponse && !isThinking && (
                 <button
                   onClick={goToFullChat}
-                  className="mt-4 flex items-center gap-2 text-xs font-bold text-indigo-500 hover:text-indigo-400 transition-colors"
+                  className={`mt-4 flex items-center gap-2 text-xs font-bold transition-colors ${isDarkMode ? 'text-gray-400 hover:text-gray-300' : 'text-gray-600 hover:text-gray-500'}`}
                 >
                   <MessageSquare size={14} />
                   {language === 'fr' ? 'Continuer la conversation' : 'Continue conversation'}
@@ -239,8 +242,8 @@ const Dashboard = ({
                 disabled={!selectedModel || isThinking}
                 className={`w-full px-6 py-4 rounded-2xl text-sm font-medium outline-none transition-all
                   ${isDarkMode 
-                    ? 'bg-white/5 border border-white/10 focus:border-indigo-500/50' 
-                    : 'bg-slate-100 border border-slate-200 focus:border-indigo-500'}
+                    ? 'bg-white/5 border border-white/10 focus:border-gray-400/50' 
+                    : 'bg-slate-100 border border-slate-200 focus:border-gray-400'}
                   disabled:opacity-40 disabled:cursor-not-allowed
                 `}
               />
@@ -249,7 +252,7 @@ const Dashboard = ({
             <button
               onClick={() => handleQuickChat()}
               disabled={!quickInput.trim() || !selectedModel || isThinking}
-              className="p-4 rounded-2xl bg-indigo-600 text-white hover:bg-indigo-500 disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95"
+              className={`p-4 rounded-2xl text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95 ${isDarkMode ? 'btn-metal-dark' : 'btn-metal-light text-gray-700'}`}
             >
               {isThinking ? <Loader2 size={20} className="animate-spin" /> : <Send size={20} />}
             </button>
@@ -330,6 +333,67 @@ const Dashboard = ({
           </div>
         </div>
 
+        {/* === SYSTEM MONITORING === */}
+        {systemStats && (
+          <div className={`p-6 rounded-[32px] border backdrop-blur-xl
+            ${isDarkMode ? 'bg-black/40 border-white/10' : 'bg-white border-slate-200 shadow-xl'}
+          `}>
+            <div className="flex items-center gap-3 mb-6">
+              <Activity size={16} className={isDarkMode ? 'text-cyan-400' : 'text-cyan-600'} />
+              <span className="text-[10px] font-black uppercase tracking-[0.3em] opacity-50">
+                {language === 'fr' ? 'Monitoring Système' : 'System Monitoring'}
+              </span>
+            </div>
+            
+            <div className="flex items-center justify-center gap-8 flex-wrap">
+              {/* CPU Gauge */}
+              <LiquidGauge
+                value={systemStats.cpu?.usage_percent || 0}
+                label="CPU"
+                icon={Cpu}
+                color="cyan"
+                size="md"
+                isDarkMode={isDarkMode}
+              />
+              
+              {/* RAM Gauge */}
+              <LiquidGauge
+                value={systemStats.ram?.usage_percent || 0}
+                label="RAM"
+                icon={MemoryStick}
+                color="green"
+                size="md"
+                isDarkMode={isDarkMode}
+              />
+              
+              {/* GPU Gauge (si disponible) */}
+              {systemStats.gpu?.available && (
+                <LiquidGauge
+                  value={systemStats.gpu?.usage_percent || 0}
+                  label="GPU"
+                  icon={Zap}
+                  color="purple"
+                  size="md"
+                  isDarkMode={isDarkMode}
+                />
+              )}
+            </div>
+            
+            {/* VRAM Bar (si GPU disponible) */}
+            {systemStats.gpu?.available && systemStats.vramTotal > 0 && (
+              <div className="mt-6 pt-4 border-t border-white/5">
+                <LiquidGaugeBar
+                  value={(systemStats.vramUsed / systemStats.vramTotal) * 100}
+                  label={`VRAM (${(systemStats.vramUsed / 1024).toFixed(1)}/${(systemStats.vramTotal / 1024).toFixed(1)} GB)`}
+                  color="orange"
+                  height={8}
+                  isDarkMode={isDarkMode}
+                />
+              </div>
+            )}
+          </div>
+        )}
+
         {/* === STATUS BAR === */}
         <div className={`flex items-center justify-between p-4 rounded-2xl
           ${isDarkMode ? 'bg-white/5' : 'bg-slate-100'}
@@ -363,9 +427,9 @@ const QuickActionCard = ({ icon: Icon, title, desc, onClick, isDarkMode, color }
     `}
   >
     <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-4 transition-transform group-hover:scale-110
-      ${color === 'indigo' ? 'bg-indigo-500/10 text-indigo-500' : 
+      ${color === 'indigo' ? (isDarkMode ? 'bg-gray-500/10 text-gray-400' : 'bg-gray-200 text-gray-600') : 
         color === 'emerald' ? 'bg-emerald-500/10 text-emerald-500' : 
-        'bg-purple-500/10 text-purple-500'}
+        (isDarkMode ? 'bg-gray-500/10 text-gray-400' : 'bg-gray-200 text-gray-600')}
     `}>
       <Icon size={24} />
     </div>
@@ -394,7 +458,7 @@ const ModelCard = ({ model, isDownloading, progress, onDownload, isDarkMode }) =
       <button
         onClick={onDownload}
         disabled={isDownloading}
-        className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-500 disabled:opacity-50 transition-all"
+        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold disabled:opacity-50 transition-all ${isDarkMode ? 'btn-metal-dark text-white' : 'btn-metal-light text-gray-700'}`}
       >
         {isDownloading ? (
           <>
@@ -413,7 +477,7 @@ const ModelCard = ({ model, isDownloading, progress, onDownload, isDarkMode }) =
     {isDownloading && typeof progress === 'number' && (
       <div className="mt-3 w-full h-1 rounded-full bg-white/10 overflow-hidden">
         <div 
-          className="h-full bg-indigo-500 transition-all" 
+          className="h-full bg-gray-500 transition-all" 
           style={{ width: `${progress}%` }} 
         />
       </div>

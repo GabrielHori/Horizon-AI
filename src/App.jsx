@@ -75,8 +75,6 @@ function App() {
       }
 
       fetchStats();
-      // ✅ Réduit de 1s à 3s pour diminuer la charge CPU
-      // Le worker Python envoie également des push events toutes les 2s
       interval = setInterval(fetchStats, 3000);
     };
 
@@ -93,7 +91,8 @@ function App() {
     return (
       <div className="h-screen flex flex-col overflow-hidden">
         <TitleBar />
-        <div className="flex-1 overflow-hidden">
+        {/* Ajout de pt-9 ici pour descendre le contenu du setup sous la barre fixed */}
+        <div className="flex-1 overflow-hidden pt-9">
           <OllamaSetup onComplete={() => setShowOllamaSetup(false)} language={language} />
         </div>
       </div>

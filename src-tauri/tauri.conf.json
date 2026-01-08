@@ -12,6 +12,7 @@
   "app": {
     "windows": [
       {
+        "label": "main",
         "title": "Horizon AI Core",
         "width": 1400,
         "height": 800,

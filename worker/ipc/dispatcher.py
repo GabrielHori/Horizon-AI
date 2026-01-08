@@ -9,12 +9,15 @@ try:
     from services.ollama_service import ollama_service
     from services.chat_history_service import chat_history_service
     from services.system_service import system_service
+    from services.tunnel_service import tunnel_service
+    from services.http_server import RemoteAccessServer
 except ImportError as e:
     print(f"[Dispatcher Error] Services import failed: {e}", file=sys.stderr)
 
 class CommandDispatcher:
     def __init__(self, ipc=None):
         self.ipc = ipc
+        self.remote_server = None  # Serveur HTTP pour accès distant
 
     def dispatch(self, cmd, payload):
         # --- HEALTH CHECK ---
@@ -161,5 +164,126 @@ class CommandDispatcher:
                     yield {"event": "error", "message": str(e), "chat_id": active_chat_id}
 
             return chat_stream()
+
+        # ============================================
+        # --- ACCÈS DISTANT (CLOUDFLARE TUNNEL) ---
+        # ============================================
+        
+        # Vérifie si cloudflared est installé
+        if cmd == "tunnel_check_cloudflared":
+            return tunnel_service.check_cloudflared_installed()
+        
+        # Installe cloudflared automatiquement
+        if cmd == "tunnel_install_cloudflared":
+            return tunnel_service.install_cloudflared()
+        
+        # Récupère la progression de l'installation
+        if cmd == "tunnel_install_progress":
+            return tunnel_service.get_install_progress()
+        
+        # Récupère le statut du tunnel
+        if cmd == "tunnel_get_status":
+            status = tunnel_service.get_status()
+            # Ajouter le statut du serveur HTTP
+            if self.remote_server:
+                status["http_server"] = self.remote_server.get_status()
+            else:
+                status["http_server"] = {"running": False, "port": None}
+            return status
+        
+        # Génère un nouveau token d'authentification
+        if cmd == "tunnel_generate_token":
+            expires_hours = payload.get("expires_hours", 24)
+            return tunnel_service.generate_auth_token(expires_hours)
+        
+        # Démarre le tunnel et le serveur HTTP
+        if cmd == "tunnel_start":
+            http_port = payload.get("port", 8765)
+            
+            # 1. Démarrer le serveur HTTP local
+            if not self.remote_server:
+                self.remote_server = RemoteAccessServer(tunnel_service, self)
+            
+            http_result = self.remote_server.start(http_port)
+            if not http_result.get("success"):
+                return http_result
+            
+            # 2. Démarrer le tunnel Cloudflare
+            tunnel_result = tunnel_service.start_tunnel(http_port)
+            
+            if not tunnel_result.get("success"):
+                # Arrêter le serveur HTTP si le tunnel échoue
+                self.remote_server.stop()
+                return tunnel_result
+            
+            monitoring_service.add_log(f"🌐 Remote access enabled: {tunnel_result.get('url', 'starting...')}")
+            
+            return {
+                "success": True,
+                "tunnel_url": tunnel_result.get("url"),
+                "http_port": http_port,
+                "message": "Remote access enabled"
+            }
+        
+        # Arrête le tunnel et le serveur HTTP
+        if cmd == "tunnel_stop":
+            # 1. Arrêter le tunnel
+            tunnel_result = tunnel_service.stop_tunnel()
+            
+            # 2. Arrêter le serveur HTTP
+            if self.remote_server:
+                self.remote_server.stop()
+            
+            monitoring_service.add_log("🔒 Remote access disabled")
+            
+            return {
+                "success": True,
+                "message": "Remote access disabled"
+            }
+        
+        # Récupère les données pour le QR code
+        if cmd == "tunnel_get_qr":
+            return tunnel_service.get_qr_data()
+        
+        # Gestion de la liste blanche IP
+        if cmd == "tunnel_add_allowed_ip":
+            ip = payload.get("ip")
+            if not ip:
+                return {"success": False, "error": "Missing 'ip' parameter"}
+            return tunnel_service.add_allowed_ip(ip)
+        
+        if cmd == "tunnel_remove_allowed_ip":
+            ip = payload.get("ip")
+            if not ip:
+                return {"success": False, "error": "Missing 'ip' parameter"}
+            return tunnel_service.remove_allowed_ip(ip)
+        
+        # Valide un token (pour debug/test)
+        if cmd == "tunnel_validate_token":
+            token = payload.get("token")
+            if not token:
+                return {"valid": False, "reason": "No token provided"}
+            return tunnel_service.validate_token(token)
+
+        # Valide un token personnalisé (avant de le définir)
+        if cmd == "tunnel_validate_custom_token":
+            token = payload.get("token")
+            if not token:
+                return {"valid": False, "error": "Token is required"}
+            return tunnel_service.validate_custom_token(token)
+
+        # Définit un token personnalisé
+        if cmd == "tunnel_set_custom_token":
+            token = payload.get("token")
+            if not token:
+                return {"success": False, "error": "Token is required"}
+            return tunnel_service.set_custom_token(token)
+
+        # Récupère les données pour le QR code avec token intégré
+        if cmd == "tunnel_get_qr_with_token":
+            token = payload.get("token")
+            if not token:
+                return {"success": False, "error": "Token is required"}
+            return tunnel_service.get_qr_data_with_token(token)
 
         raise ValueError(f"Unknown command: {cmd}")

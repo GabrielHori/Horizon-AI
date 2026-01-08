@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Horizon AI - Remote Access</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg-dark: #0a0a0a;
+            --border-white: rgba(255, 255, 255, 0.08);
+            --metal-text: linear-gradient(180deg, #ffffff 0%, #888888 40%, #ffffff 50%, #666666 60%, #aaaaaa 100%);
+            --accent-status: #10b981; /* Vert uniquement pour le point de statut */
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-dark);
+            color: #ffffff;
+            height: 100dvh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ===== FOND ANIMÉ PRISM (TON CODE REACT) ===== */
+        .prism-container {
+            position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; background: #0a0a0a;
+        }
+
+        .flare {
+            position: absolute; filter: blur(60px); opacity: 0.6;
+            animation: flare-drift 20s ease-in-out infinite;
+        }
+
+        .flare-1 {
+            top: -10%; right: 10%; width: 600px; height: 800px;
+            background: linear-gradient(135deg, transparent 0%, rgba(255, 100, 100, 0.15) 15%, rgba(255, 180, 50, 0.2) 25%, rgba(255, 255, 100, 0.15) 35%, rgba(100, 255, 100, 0.1) 45%, rgba(100, 200, 255, 0.15) 55%, rgba(100, 100, 255, 0.2) 65%, rgba(180, 100, 255, 0.15) 75%, transparent 100%);
+            transform: rotate(-25deg);
+        }
+
+        .flare-2 {
+            bottom: 5%; right: 15%; width: 400px; height: 600px;
+            background: linear-gradient(145deg, transparent 0%, rgba(255, 150, 50, 0.2) 20%, rgba(255, 220, 100, 0.15) 35%, rgba(100, 255, 180, 0.1) 50%, rgba(80, 180, 255, 0.15) 65%, rgba(150, 100, 255, 0.1) 80%, transparent 100%);
+            transform: rotate(-35deg);
+            animation-direction: reverse;
+        }
+
+        @keyframes flare-drift {
+            0%, 100% { transform: rotate(-25deg) translateX(0) translateY(0); opacity: 0.6; }
+            50% { transform: rotate(-27deg) translateX(-20px) translateY(20px); opacity: 0.4; }
+        }
+
+        .prism-container::after {
+            content: ""; position: absolute; inset: 0; opacity: 0.02; z-index: 1;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+        }
+
+        /* --- AUTH SCREEN --- */
+        .auth-screen { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; background: black; }
+        .auth-card { background: rgba(20, 20, 20, 0.8); border: 1px solid var(--border-white); padding: 40px; border-radius: 32px; width: 100%; max-width: 400px; text-align: center; }
+        .auth-title { font-size: 32px; font-weight: 900; background: var(--metal-text); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .auth-input { width: 100%; background: rgba(255,255,255,0.05); border: 1px solid var(--border-white); border-radius: 16px; padding: 16px; color: white; margin: 20px 0; outline: none; text-align: center; }
+        .auth-btn { width: 100%; padding: 16px; border-radius: 16px; border: none; background: white; color: black; font-weight: 800; cursor: pointer; }
+
+        /* --- HEADER --- */
+        header { padding: 15px 25px; border-bottom: 1px solid var(--border-white); display: flex; justify-content: space-between; align-items: center; background: rgba(10, 10, 10, 0.7); backdrop-filter: blur(10px); }
+        .logo { font-weight: 900; font-size: 18px; color: white; }
+        .logo span { color: white; opacity: 0.5; } /* Suppression du vert ici */
+
+        /* --- CHAT LAYOUT --- */
+        .main-container { flex: 1; display: flex; flex-direction: column; overflow: hidden; max-width: 1000px; margin: 0 auto; width: 100%; }
+        
+        .conversations-bar { display: flex; gap: 10px; padding: 15px; overflow-x: auto; }
+        .conv-pill { padding: 8px 16px; background: rgba(255,255,255,0.05); border: 1px solid var(--border-white); border-radius: 100px; font-size: 12px; color: #888; cursor: pointer; white-space: nowrap; }
+        .conv-pill.active { border-color: white; color: white; background: rgba(255,255,255,0.1); }
+        .btn-new { background: rgba(255,255,255,0.1); border: 1px solid var(--border-white); color: white; padding: 8px 16px; border-radius: 100px; font-size: 11px; font-weight: bold; cursor: pointer; }
+
+        /* --- MESSAGES DESIGN (CORRIGÉ SELON SCREEN) --- */
+        #messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 20px; }
+        
+        .message { display: flex; flex-direction: column; max-width: 85%; }
+        .message.user { align-self: flex-end; align-items: flex-end; }
+        .message.assistant { align-self: flex-start; align-items: flex-start; }
+
+        .bubble { padding: 14px 22px; border-radius: 20px; font-size: 14px; line-height: 1.6; }
+        
+        /* Utilisateur : Blanc Pur, Texte Noir */
+        .user .bubble { background: #ffffff; color: #000000; border-bottom-right-radius: 4px; font-weight: 500; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
+        
+        /* Assistant : Gris très sombre / Translucide, Texte Blanc */
+        .assistant .bubble { background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-white); color: #efefef; border-bottom-left-radius: 4px; backdrop-filter: blur(10px); }
+
+        pre { background: #000 !important; padding: 15px; border-radius: 12px; overflow-x: auto; margin: 10px 0; border: 1px solid var(--border-white); }
+        code { font-family: 'Courier New', monospace; font-size: 13px; color: #10b981; }
+
+        /* --- INPUT AREA --- */
+        .input-wrapper { padding: 20px; background: linear-gradient(0deg, #0a0a0a 60%, transparent); }
+        .input-box { background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-white); border-radius: 24px; padding: 10px 15px; display: flex; align-items: center; gap: 10px; }
+        
+        textarea { flex: 1; background: transparent; border: none; color: white; outline: none; resize: none; font-size: 14px; }
+        .btn-send { background: white; border: none; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+    <div class="prism-container">
+        <div class="flare flare-1"></div>
+        <div class="flare flare-2"></div>
+    </div>
+
+    <div id="auth-screen" class="auth-screen">
+        <div class="auth-card">
+            <h1 class="auth-title">HORIZON AI</h1>
+            <input type="password" id="token-input" class="auth-input" placeholder="Clé d'accès">
+            <button id="auth-btn" class="auth-btn">SE CONNECTER</button>
+        </div>
+    </div>
+
+    <div id="main-interface" class="hidden" style="display: flex; flex-direction: column; height: 100%;">
+        <header>
+            <div class="logo">HORIZON AI</div>
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <div style="display: flex; align-items: center; gap: 6px;">
+                    <div style="width: 8px; height: 8px; background: var(--accent-status); border-radius: 50%; box-shadow: 0 0 8px var(--accent-status);"></div>
+                    <span style="font-size: 10px; font-weight: 700; letter-spacing: 1px; color: var(--accent-status);">SYSTÈME PRÊT</span>
+                </div>
+                <select id="model-select" style="background: rgba(255,255,255,0.05); color: white; border: 1px solid var(--border-white); padding: 5px 10px; border-radius: 8px; font-size: 11px; outline: none;">
+                    <option value="">Modèle...</option>
+                </select>
+            </div>
+        </header>
+
+        <div class="main-container">
+            <div class="conversations-bar" id="conversations">
+                <button onclick="newChat()" class="btn-new">+ NEW CHAT</button>
+            </div>
+
+            <div id="messages">
+                <div style="margin: auto; text-align: center; opacity: 0.1;">
+                    <h2 style="font-weight: 900; letter-spacing: 12px; font-size: 40px;">HORIZON</h2>
+                </div>
+            </div>
+
+            <div class="input-wrapper">
+                <div class="input-box">
+                    <textarea id="chat-input" placeholder="Message..." rows="1"></textarea>
+                    <button id="send-btn" class="btn-send">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="3"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- LOGIQUE API (CONSERVÉE À 100%) ---
+        let token = localStorage.getItem('horizon_token') || '';
+        let currentChatId = null;
+        let messages = [];
+
+        const authScreen = document.getElementById('auth-screen');
+        const mainInterface = document.getElementById('main-interface');
+        const tokenInput = document.getElementById('token-input');
+        const authBtn = document.getElementById('auth-btn');
+        const messagesEl = document.getElementById('messages');
+        const chatInput = document.getElementById('chat-input');
+        const sendBtn = document.getElementById('send-btn');
+        const modelSelect = document.getElementById('model-select');
+        const convsEl = document.getElementById('conversations');
+
+        async function api(path, options = {}) {
+            const res = await fetch(path, {
+                ...options,
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json', ...options.headers }
+            });
+            if (res.status === 401) { logout(); throw new Error("Unauthorized"); }
+            return res.json();
+        }
+
+        function logout() { localStorage.removeItem('horizon_token'); location.reload(); }
+
+        async function authenticate() {
+            const val = tokenInput.value.trim();
+            if(!val) return;
+            token = val;
+            try {
+                const res = await api('/api/models');
+                if(res.success) {
+                    localStorage.setItem('horizon_token', token);
+                    authScreen.classList.add('hidden');
+                    mainInterface.classList.remove('hidden');
+                    initApp();
+                }
+            } catch(e) { console.error(e); }
+        }
+
+        async function initApp() {
+            const m = await api('/api/models');
+            if(m.success) modelSelect.innerHTML = m.models.map(md => `<option value="${md.name}">${md.name}</option>`).join('');
+            loadConvs();
+        }
+
+        async function loadConvs() {
+            const res = await api('/api/conversations');
+            if(res.success) {
+                const list = res.conversations.map(c => `
+                    <div class="conv-pill ${c.id === currentChatId ? 'active' : ''}" onclick="selectConv('${c.id}')">
+                        ${c.title || 'Conversation'}
+                    </div>
+                `).join('');
+                convsEl.innerHTML = '<button onclick="newChat()" class="btn-new">+ NEW</button>' + list;
+            }
+        }
+
+        window.newChat = () => { currentChatId = null; messages = []; renderMessages(); loadConvs(); };
+
+        window.selectConv = async (id) => {
+            currentChatId = id;
+            loadConvs();
+            const res = await api(`/api/conversations/${id}/messages`);
+            if(res.success) { messages = res.messages; renderMessages(); }
+        };
+
+        function renderMessages() {
+            if(messages.length === 0) {
+                messagesEl.innerHTML = '<div style="margin: auto; text-align: center; opacity: 0.1;"><h2 style="font-weight: 900; letter-spacing: 12px; font-size: 40px;">HORIZON</h2></div>';
+                return;
+            }
+            messagesEl.innerHTML = messages.map(m => `
+                <div class="message ${m.role}">
+                    <div class="bubble">${formatContent(m.content)}</div>
+                </div>
+            `).join('');
+            messagesEl.scrollTop = messagesEl.scrollHeight;
+        }
+
+        function formatContent(text) {
+            return text
+                .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+                .replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
+                .replace(/`([^`]+)`/g, '<code>$1</code>')
+                .replace(/\n/g, '<br>');
+        }
+
+        async function send() {
+            const content = chatInput.value.trim();
+            if(!content) return;
+            messages.push({ role: 'user', content });
+            renderMessages();
+            chatInput.value = '';
+            try {
+                const res = await api('/api/chat', {
+                    method: 'POST',
+                    body: JSON.stringify({ model: modelSelect.value, prompt: content, chat_id: currentChatId })
+                });
+                if(res.success) {
+                    messages.push({ role: 'assistant', content: res.response });
+                    currentChatId = res.chat_id;
+                    renderMessages();
+                    loadConvs();
+                }
+            } catch(e) {}
+        }
+
+        authBtn.onclick = authenticate;
+        sendBtn.onclick = send;
+        chatInput.onkeydown = (e) => { if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } };
+
+        if(token) { authenticate(); }
+    </script>
+</body>
+</html>
