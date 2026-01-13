@@ -31,6 +31,21 @@ from typing import Dict, Any, Optional, List
 from dataclasses import dataclass, asdict
 import shutil
 
+# Import crypto service pour chiffrement des tokens
+try:
+    from services.crypto_service import crypto_service
+except ImportError:
+    crypto_service = None
+
+# Import audit service pour logging révocation (V2.1)
+try:
+    from services.audit_service import audit_service, ActionType
+    AUDIT_AVAILABLE = True
+except ImportError:
+    AUDIT_AVAILABLE = False
+    audit_service = None
+    ActionType = None
+
 
 # URL de téléchargement de cloudflared
 CLOUDFLARED_DOWNLOAD_URLS = {
@@ -158,11 +173,28 @@ class TunnelService:
         self._monitor_thread: Optional[threading.Thread] = None
     
     def _load_config(self) -> TunnelConfig:
-        """Charge la configuration depuis le fichier"""
+        """Charge la configuration depuis le fichier (avec déchiffrement si nécessaire)"""
         try:
             if self.config_file.exists():
                 with open(self.config_file, 'r', encoding='utf-8') as f:
                     data = json.load(f)
+                    
+                    # Déchiffrer le token si chiffré (V2)
+                    if data.get("auth_token") and crypto_service:
+                        try:
+                            # Vérifier si c'est un token chiffré (commence par un préfixe spécial)
+                            encrypted_token = data.get("auth_token")
+                            if encrypted_token.startswith("ENC:"):
+                                # Token chiffré, déchiffrer
+                                decrypted_token = crypto_service.decrypt_string(
+                                    encrypted_token[4:],  # Enlever le préfixe "ENC:"
+                                    associated_data="tunnel_auth_token"
+                                )
+                                data["auth_token"] = decrypted_token
+                        except Exception as e:
+                            print(f"[TunnelService] Erreur déchiffrement token: {e}", file=sys.stderr)
+                            # En cas d'erreur, garder le token tel quel (compatibilité)
+                    
                     return TunnelConfig(**data)
         except Exception as e:
             print(f"[TunnelService] Erreur chargement config: {e}", file=sys.stderr)
@@ -170,13 +202,45 @@ class TunnelService:
         return TunnelConfig()
     
     def _save_config(self) -> bool:
-        """Sauvegarde la configuration"""
+        """
+        Sauvegarde la configuration (avec chiffrement systématique du token si crypto_service disponible)
+        
+        V2: Chiffrement systématique pour sécurité maximale
+        """
         try:
+            config_dict = asdict(self.config)
+            
+            # Chiffrer le token si disponible (V2 - systématique)
+            if config_dict.get("auth_token"):
+                # Si déjà chiffré (commence par "ENC:"), ne pas re-chiffrer
+                if config_dict["auth_token"].startswith("ENC:"):
+                    # Déjà chiffré, garder tel quel
+                    pass
+                elif crypto_service:
+                    try:
+                        # Vérifier que crypto_service a une clé maître configurée
+                        if not crypto_service._master_key:
+                            print("[TunnelService] Warning: CryptoService master key not set. Token saved unencrypted. Set password first.", file=sys.stderr)
+                        else:
+                            # Chiffrer le token hash
+                            encrypted_token = crypto_service.encrypt_string(
+                                config_dict["auth_token"],
+                                associated_data="tunnel_auth_token"
+                            )
+                            # Ajouter un préfixe pour identifier les tokens chiffrés
+                            config_dict["auth_token"] = f"ENC:{encrypted_token}"
+                            print("[TunnelService] Token encrypted before saving", file=sys.stderr)
+                    except Exception as e:
+                        print(f"[TunnelService] Error encrypting token: {e}. Token saved unencrypted (compatibility).", file=sys.stderr)
+                        # En cas d'erreur, sauvegarder en clair (rétrocompatibilité)
+                else:
+                    print("[TunnelService] Warning: CryptoService not available. Token saved unencrypted. Install crypto dependencies.", file=sys.stderr)
+            
             with open(self.config_file, 'w', encoding='utf-8') as f:
-                json.dump(asdict(self.config), f, indent=4)
+                json.dump(config_dict, f, indent=4)
             return True
         except Exception as e:
-            print(f"[TunnelService] Erreur sauvegarde config: {e}", file=sys.stderr)
+            print(f"[TunnelService] Error saving config: {e}", file=sys.stderr)
             return False
     
     def _get_download_url(self) -> Optional[str]:
@@ -470,6 +534,8 @@ class TunnelService:
         """
         Valide un token d'authentification
 
+        V2: Déchiffre le token stocké si nécessaire avant comparaison
+
         Retourne:
         - valid: bool
         - reason: str (si invalide)
@@ -477,11 +543,33 @@ class TunnelService:
         if not token or not self.config.auth_token:
             return {"valid": False, "reason": "No token configured"}
 
-        # Hasher le token fourni
+        # Récupérer le token hash stocké (déchiffrer si nécessaire)
+        stored_token_hash = self.config.auth_token
+        
+        # Si le token est chiffré (commence par "ENC:"), le déchiffrer
+        if stored_token_hash.startswith("ENC:"):
+            if not crypto_service:
+                return {"valid": False, "reason": "Token encrypted but CryptoService not available"}
+            
+            try:
+                if not crypto_service._master_key:
+                    return {"valid": False, "reason": "Token encrypted but master key not configured"}
+                
+                # Déchiffrer le token hash stocké
+                encrypted_data = stored_token_hash[4:]  # Enlever le préfixe "ENC:"
+                stored_token_hash = crypto_service.decrypt_string(
+                    encrypted_data,
+                    associated_data="tunnel_auth_token"
+                )
+            except Exception as e:
+                print(f"[TunnelService] Error decrypting token during validation: {e}", file=sys.stderr)
+                return {"valid": False, "reason": "Token decryption failed"}
+
+        # Hasher le token fourni par l'utilisateur
         token_hash = hashlib.sha256(token.encode()).hexdigest()
 
         # Vérifier la correspondance
-        if token_hash != self.config.auth_token:
+        if token_hash != stored_token_hash:
             return {"valid": False, "reason": "Invalid token"}
 
         # Vérifier l'expiration
@@ -578,10 +666,29 @@ class TunnelService:
         return {"success": True, "allowed_ips": self.config.allowed_ips}
     
     def remove_allowed_ip(self, ip: str) -> Dict[str, Any]:
-        """Retire une IP de la liste blanche"""
+        """
+        Retire une IP de la liste blanche
+        
+        V2.1 : Utilisé pour révocation rapide de sessions
+        """
         if ip in self.config.allowed_ips:
             self.config.allowed_ips.remove(ip)
             self._save_config()
+            
+            # Logger la révocation (si audit_service disponible)
+            if AUDIT_AVAILABLE and audit_service and ActionType:
+                try:
+                    audit_service.log_action(
+                        ActionType.REMOTE_ACCESS_REVOKED,
+                        {
+                            "ip": ip,
+                            "revoked_at": datetime.utcnow().isoformat(),
+                            "reason": "IP removed from allowlist (session revocation)",
+                            "user_action": "immediate_revocation"
+                        }
+                    )
+                except Exception as e:
+                    print(f"[TunnelService] Error logging revocation: {e}", file=sys.stderr)
         
         return {"success": True, "allowed_ips": self.config.allowed_ips}
     

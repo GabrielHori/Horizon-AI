@@ -4,6 +4,8 @@ export const translations = {
       dashboard: "DASHBOARD",
       chat: "AI ASSISTANT",
       files: "DATA EXPLORER",
+      memory: "MEMORY",
+      remote: "REMOTE ACCESS",
       settings: "CONFIGURATION"
     },
     topbar: {
@@ -140,15 +142,59 @@ export const translations = {
       storage_desc: "Define the location of model files (.gguf).",
       storage_placeholder: "Default (C:\\Users\\...)\\.ollama\\models",
       storage_browse: "BROWSE"
+    },
+    // === V2.1 SECURITY (Phase 3) ===
+    security: {
+      actionBlocked: "Action Blocked",
+      actionBlockedReason: "This action requires a permission",
+      missingPermission: "Missing permission",
+      requestPermission: "Request Permission",
+      learnMore: "Learn More",
+      securityModeActive: "Security Mode Active",
+      paranoModeDescription: "Parano mode requires explicit permission for each action.",
+      permissionRequiredFor: "This permission is required for",
+      permissionDescriptions: {
+        FileRead: "Reading files from the local filesystem",
+        FileWrite: "Writing or modifying files",
+        CommandExecute: "Executing system commands",
+        NetworkAccess: "Network access",
+        RemoteAccess: "Remote access to the application",
+        MemoryAccess: "Accessing memory data",
+        RepoAnalyze: "Analyzing repository structure"
+      },
+      // Permission Request Modal
+      permissionRequestTitle: "Permission Request",
+      permissionRequestDescription: "You requested to authorize:",
+      permissionWarning: "Enabling this permission allows the AI to access your files. Make sure you trust this action.",
+      permissionScope: "Permission scope:",
+      permissionScopeTemporary: "Temporary ({duration} minutes)",
+      permissionScopeSession: "This session only",
+      permissionScopeProject: "This project only",
+      permissionDuration: "Duration (minutes):",
+      permissionDuration15min: "15 minutes",
+      permissionDuration1hour: "1 hour",
+      permissionDuration8hours: "8 hours",
+      permissionCancel: "Cancel",
+      permissionAuthorize: "Authorize ({scope})",
+      // Permission Bar
+      permissionsLabel: "Permissions:",
+      fileRead: "Read Files",
+      fileWrite: "Write Files",
+      repoAnalyze: "Analyze Repo",
+      securityModeActive: "Security Mode Active",
+      permissionGranted: "Granted",
+      permissionDenied: "Denied"
     }
   },
   fr: {
-    nav: {
-      dashboard: "TABLEAU DE BORD",
-      chat: "ASSISTANT IA",
-      files: "EXPLORATEUR DATA",
-      settings: "CONFIGURATION"
-    },
+      nav: {
+        dashboard: "TABLEAU DE BORD",
+        chat: "ASSISTANT IA",
+        files: "EXPLORATEUR DATA",
+        memory: "MÉMOIRE",
+        remote: "REMOTE ACCESS",
+        settings: "CONFIGURATION"
+      },
     topbar: {
       root_access: "ACCÈS ROOT",
       model_select: "CHOISIR MODÈLE",
@@ -283,6 +329,48 @@ export const translations = {
       storage_desc: "Définissez l'emplacement des fichiers de modèles (.gguf).",
       storage_placeholder: "Par défaut (C:\\Users\\...)\\.ollama\\models",
       storage_browse: "PARCOURIR"
+    },
+    // === V2.1 SÉCURITÉ (Phase 3) ===
+    security: {
+      actionBlocked: "Action Bloquée",
+      actionBlockedReason: "Cette action nécessite une permission",
+      missingPermission: "Permission manquante",
+      requestPermission: "Demander Permission",
+      learnMore: "En Savoir Plus",
+      securityModeActive: "Mode Sécurité Actif",
+      paranoModeDescription: "Le mode parano exige une permission explicite pour chaque action.",
+      permissionRequiredFor: "Cette permission est requise pour",
+      permissionDescriptions: {
+        FileRead: "Lire des fichiers depuis le système de fichiers local",
+        FileWrite: "Écrire ou modifier des fichiers",
+        CommandExecute: "Exécuter des commandes système",
+        NetworkAccess: "Accès réseau",
+        RemoteAccess: "Accès distant à l'application",
+        MemoryAccess: "Accéder aux données mémoire",
+        RepoAnalyze: "Analyser la structure d'un repository"
+      },
+      // Modal Demande Permission
+      permissionRequestTitle: "Demande de Permission",
+      permissionRequestDescription: "Vous avez demandé à autoriser :",
+      permissionWarning: "Activer cette permission permet à l'IA d'accéder à vos fichiers. Assurez-vous de faire confiance à cette action.",
+      permissionScope: "Portée de la permission :",
+      permissionScopeTemporary: "Temporaire ({duration} minutes)",
+      permissionScopeSession: "Cette session uniquement",
+      permissionScopeProject: "Ce projet uniquement",
+      permissionDuration: "Durée (minutes) :",
+      permissionDuration15min: "15 minutes",
+      permissionDuration1hour: "1 heure",
+      permissionDuration8hours: "8 heures",
+      permissionCancel: "Annuler",
+      permissionAuthorize: "Autoriser ({scope})",
+      // Barre Permissions
+      permissionsLabel: "Permissions :",
+      fileRead: "Lecture Fichiers",
+      fileWrite: "Écriture Fichiers",
+      repoAnalyze: "Analyser Repo",
+      securityModeActive: "Mode Sécurité Actif",
+      permissionGranted: "Accordée",
+      permissionDenied: "Refusée"
     }
   }
 };

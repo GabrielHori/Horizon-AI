@@ -11,8 +11,14 @@ try:
     from services.system_service import system_service
     from services.tunnel_service import tunnel_service
     from services.http_server import RemoteAccessServer
+    from services.prompt_builder_service import prompt_builder_service
+    from services.audit_service import audit_service, ActionType
+    from services.project_service import project_service  # V2.1 : Service projets
+    from services.path_validator import path_validator  # V2.1 : Validation path traversal
+    from ipc.permission_guard import permission_guard  # V2.1 : Defense-in-depth permissions
 except ImportError as e:
     print(f"[Dispatcher Error] Services import failed: {e}", file=sys.stderr)
+    project_service = None
 
 class CommandDispatcher:
     def __init__(self, ipc=None):
@@ -20,13 +26,20 @@ class CommandDispatcher:
         self.remote_server = None  # Serveur HTTP pour accès distant
 
     def dispatch(self, cmd, payload):
+        # ✅ PERMISSION GUARD (Defense in Depth - V2.1)
+        # Vérification secondaire des permissions côté Python
+        # (Rust PermissionManager reste l'autorité principale)
+        allowed, error = permission_guard.check(cmd, payload)
+        if not allowed:
+            print(f"[SECURITY] Permission denied by Python guard: {cmd} - {error}", file=sys.stderr)
+            return {"success": False, "error": f"Permission denied: {error}"}
+        
         # --- HEALTH CHECK ---
         if cmd == "health_check":
             return {"status": "healthy"}
         
         # --- SHUTDOWN (fermeture propre) ---
         if cmd == "shutdown":
-            import sys
             print("🛑 Worker shutdown requested", file=sys.stderr)
             return {"status": "shutdown_acknowledged"}
         
@@ -105,20 +118,78 @@ class CommandDispatcher:
         if cmd == "get_conversation_messages":
             chat_id = payload.get("chat_id")
             return chat_history_service.get_messages(chat_id)
+        
+        # V2.1 : Récupérer les métadonnées d'une conversation (y compris projectId)
+        if cmd == "get_conversation_metadata":
+            chat_id = payload.get("chat_id")
+            if not chat_id:
+                return {"success": False, "error": "chat_id is required"}
+            
+            try:
+                # Charger le fichier de conversation pour récupérer les métadonnées
+                path = os.path.join(chat_history_service.storage_path, f"{chat_id}.json")
+                if not os.path.exists(path):
+                    return {"success": False, "error": "Conversation not found"}
+                
+                with open(path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                
+                # Détecter si chiffré
+                is_encrypted = content.startswith("ENC:")
+                if is_encrypted:
+                    if not chat_history_service.crypto_service or not chat_history_service.crypto_service._master_key:
+                        return {"success": False, "error": "Conversation encrypted but no key"}
+                    encrypted_data = content[4:]
+                    decrypted = chat_history_service.crypto_service.decrypt_string(encrypted_data)
+                    data = json.loads(decrypted)
+                else:
+                    data = json.loads(content) if content.strip() else {}
+                
+                return {
+                    "success": True,
+                    "metadata": {
+                        "id": data.get("id"),
+                        "title": data.get("title"),
+                        "model": data.get("model"),
+                        "projectId": data.get("projectId"),  # V2.1
+                        "created_at": data.get("created_at"),
+                        "updated_at": data.get("updated_at"),
+                        "message_count": len(data.get("messages", [])),
+                        "encrypted": is_encrypted
+                    }
+                }
+            except Exception as e:
+                return {"success": False, "error": str(e)}
 
         if cmd == "delete_conversation":
             chat_id = payload.get("chat_id")
             return chat_history_service.delete_conversation(chat_id)
 
+        # --- CHIFFREMENT CHAT HISTORY (V2) ---
+        if cmd == "chat_history_set_crypto_password":
+            password = payload.get("password")
+            if not password:
+                return {"success": False, "error": "password is required"}
+            success = chat_history_service.set_crypto_password(password)
+            return {"success": success}
+
         if cmd == "chat":
             model = payload.get("model")
             prompt = payload.get("prompt")
             chat_id = payload.get("chat_id") # Peut être None
+            project_id = payload.get("project_id")  # V2.1 : ID du projet lié
             language = payload.get("language", "en")  # Langue de l'interface
+            context_files = payload.get("context_files", [])  # NOUVEAU: Fichiers de contexte
+            memory_keys = payload.get("memory_keys", [])  # NOUVEAU: Clés de mémoire
+            repo_context = payload.get("repo_context")  # NOUVEAU: Contexte repository
 
             # 1. Sauvegarder le message utilisateur et récupérer/créer l'ID
-            # On passe aussi le modèle pour l'associer à la conversation
-            active_chat_id = chat_history_service.save_message(chat_id, "user", prompt, model=model)
+            # On passe aussi le modèle et project_id pour l'associer à la conversation (V2.1)
+            active_chat_id = chat_history_service.save_message(
+                chat_id, "user", prompt, 
+                model=model, 
+                project_id=project_id
+            )
 
             # 2. Définir le générateur pour le streaming
             def chat_stream():
@@ -127,26 +198,82 @@ class CommandDispatcher:
                     # Récupérer tous les messages précédents pour le contexte
                     previous_messages = chat_history_service.get_messages(active_chat_id)
                     
-                    # System prompt pour définir la langue de réponse
-                    system_prompts = {
-                        "fr": "Tu es un assistant IA utile et amical. Tu dois TOUJOURS répondre en français, peu importe la langue de la question. Sois concis et précis dans tes réponses.",
-                        "en": "You are a helpful and friendly AI assistant. You must ALWAYS respond in English, regardless of the question's language. Be concise and precise in your answers."
-                    }
+                    # Récupérer les mémoires pertinentes (V2.1 Sprint 2.2 : mémoire projet automatique)
+                    memory_entries = []
                     
-                    # Construire l'historique pour Ollama avec system prompt
-                    messages_for_ollama = [
+                    # V2.1 Sprint 2.2 : Charger automatiquement les memoryKeys du projet si project_id fourni
+                    project_memory_keys = []
+                    if project_id and project_service:
+                        try:
+                            project = project_service.get_project(project_id)
+                            if project and project.memoryKeys:
+                                project_memory_keys = project.memoryKeys
+                        except Exception as e:
+                            print(f"[Dispatcher] Error loading project memory keys: {e}", file=sys.stderr)
+                    
+                    # Combiner memory_keys (manuels, type "user") + memoryKeys projet (type "project")
+                    all_memory_keys = list(set(memory_keys + project_memory_keys))  # Déduplication
+                    
+                    if all_memory_keys:
+                        try:
+                            from services.memory_service import memory_service
+                            # Convertir en sets pour vérification efficace
+                            project_keys_set = set(project_memory_keys)
+                            user_keys_set = set(memory_keys)
+                            
+                            for key in all_memory_keys:
+                                entry = None
+                                
+                                # Essayer d'abord mémoire projet si project_id fourni et que la clé est dans project.memoryKeys
+                                if project_id and key in project_keys_set:
+                                    entry = memory_service.get_memory("project", key, project_id=project_id)
+                                
+                                # Si pas trouvé en mémoire projet, essayer mémoire user
+                                if not entry and key in user_keys_set:
+                                    entry = memory_service.get_memory("user", key)
+                                
+                                if entry:
+                                    memory_entries.append({"key": key, "value": entry})
+                        except ImportError:
+                            pass  # memory_service pas disponible
+                    
+                    # Construire le prompt avec PromptBuilder (V2)
+                    prompt_obj = prompt_builder_service.build_prompt(
+                        user_message=prompt,
+                        chat_history=previous_messages,
+                        context_files=context_files,
+                        memory_entries=memory_entries,
+                        repo_context=repo_context,
+                        language=language,
+                    )
+                    
+                    # Convertir en format Ollama
+                    messages_for_ollama = prompt_obj.to_ollama_messages()
+                    
+                    # Logger l'envoi du prompt (audit trail)
+                    audit_service.log_action(
+                        ActionType.PROMPT_SENT,
                         {
-                            'role': 'system',
-                            'content': system_prompts.get(language, system_prompts["en"])
+                            "prompt_id": prompt_obj.prompt_id,
+                            "model": model,
+                            "project_id": project_id,  # V2.1 : Inclure project_id dans log
+                            "user_message_length": len(prompt),
+                            "context_files_count": len(context_files),
+                            "memory_keys_count": len(all_memory_keys),  # V2.1 : Inclure memoryKeys projet
+                            "memory_keys_user_count": len(memory_keys),
+                            "memory_keys_project_count": len(project_memory_keys),  # V2.1 : Compte séparé
+                            "components_count": len(prompt_obj.components),
                         }
-                    ]
+                    )
                     
-                    # Ajouter les messages précédents
-                    for msg in previous_messages:
-                        messages_for_ollama.append({
-                            'role': msg['role'],
-                            'content': msg['content']
-                        })
+                    # Émettre le prompt string au frontend (pour affichage UI)
+                    prompt_string = prompt_obj.to_string()
+                    yield {
+                        "event": "prompt_preview",
+                        "data": prompt_string,
+                        "prompt_id": prompt_obj.prompt_id,
+                        "prompt_dict": prompt_obj.to_dict()
+                    }
                     
                     # Appel à Ollama avec l'historique complet
                     for chunk in ollama.chat(model=model, messages=messages_for_ollama, stream=True):
@@ -155,8 +282,12 @@ class CommandDispatcher:
                         # On renvoie le token au frontend via l'IPC
                         yield {"event": "token", "data": token, "chat_id": active_chat_id}
                     
-                    # 3. Une fois fini, on sauvegarde la réponse de l'IA
-                    chat_history_service.save_message(active_chat_id, "assistant", full_response, model=model)
+                    # 3. Une fois fini, on sauvegarde la réponse de l'IA (avec project_id pour conserver le lien)
+                    chat_history_service.save_message(
+                        active_chat_id, "assistant", full_response, 
+                        model=model,
+                        project_id=project_id  # V2.1 : Conserver le lien projet
+                    )
                     yield {"event": "done", "chat_id": active_chat_id}
                 
                 except Exception as e:
@@ -285,5 +416,381 @@ class CommandDispatcher:
             if not token:
                 return {"success": False, "error": "Token is required"}
             return tunnel_service.get_qr_data_with_token(token)
+
+        # --- GESTION DE LA MÉMOIRE (Phase 2) ---
+        try:
+            from services.memory_service import memory_service
+        except ImportError:
+            memory_service = None
+
+        if memory_service:
+            # Sauvegarder une entrée de mémoire
+            if cmd == "memory_save":
+                memory_type = payload.get("memory_type")  # "user", "project", "session"
+                key = payload.get("key")
+                value = payload.get("value")
+                project_id = payload.get("project_id")
+                metadata = payload.get("metadata")
+                
+                if not memory_type or not key:
+                    return {"success": False, "error": "memory_type and key are required"}
+                
+                success = memory_service.save_memory(
+                    memory_type=memory_type,
+                    key=key,
+                    value=value,
+                    project_id=project_id,
+                    metadata=metadata
+                )
+                
+                return {"success": success}
+            
+            # Récupérer une entrée de mémoire
+            if cmd == "memory_get":
+                memory_type = payload.get("memory_type")
+                key = payload.get("key")
+                project_id = payload.get("project_id")
+                
+                if not memory_type or not key:
+                    return {"success": False, "error": "memory_type and key are required"}
+                
+                value = memory_service.get_memory(
+                    memory_type=memory_type,
+                    key=key,
+                    project_id=project_id
+                )
+                
+                return {"success": value is not None, "value": value}
+            
+            # Lister toutes les entrées d'un type
+            if cmd == "memory_list":
+                memory_type = payload.get("memory_type")
+                project_id = payload.get("project_id")
+                
+                if not memory_type:
+                    return {"success": False, "error": "memory_type is required"}
+                
+                entries = memory_service.list_memories(
+                    memory_type=memory_type,
+                    project_id=project_id
+                )
+                
+                return {"success": True, "entries": entries}
+            
+            # Supprimer une entrée de mémoire
+            if cmd == "memory_delete":
+                memory_type = payload.get("memory_type")
+                key = payload.get("key")
+                project_id = payload.get("project_id")
+                
+                if not memory_type or not key:
+                    return {"success": False, "error": "memory_type and key are required"}
+                
+                success = memory_service.delete_memory(
+                    memory_type=memory_type,
+                    key=key,
+                    project_id=project_id
+                )
+                
+                return {"success": success}
+            
+            # Vider la mémoire de session
+            if cmd == "memory_clear_session":
+                success = memory_service.clear_session_memory()
+                return {"success": success}
+            
+            # Configurer le mot de passe pour le chiffrement
+            if cmd == "memory_set_crypto_password":
+                password = payload.get("password")
+                if not password:
+                    return {"success": False, "error": "password is required"}
+                
+                success = memory_service.set_crypto_password(password)
+                return {"success": success}
+
+        # --- ANALYSE DE REPOSITORY (Phase 2) ---
+        # Analyser un repository
+        if cmd == "analyze_repository":
+            try:
+                from services.repo_analyzer_service import repo_analyzer_service
+            except ImportError as e:
+                return {"success": False, "error": f"Service not available: {str(e)}"}
+            except Exception as e:
+                return {"success": False, "error": f"Service error: {str(e)}"}
+            
+            if repo_analyzer_service:
+                repo_path = payload.get("repo_path")
+                max_depth = payload.get("max_depth", 10)
+                max_files = payload.get("max_files", 1000)
+                
+                if not repo_path:
+                    return {"success": False, "error": "repo_path is required"}
+                
+                # ✅ VALIDATION PATH TRAVERSAL (Sécurité critique)
+                is_safe, error = path_validator.is_safe_repo_path(repo_path)
+                if not is_safe:
+                    # Logger la tentative pour audit de sécurité
+                    print(f"[SECURITY] Path traversal attempt blocked: {repo_path} - {error}", file=sys.stderr)
+                    if audit_service:
+                        audit_service.log_action(
+                            ActionType.FILE_READ,
+                            {
+                                "blocked": True,
+                                "reason": "path_traversal_denied",
+                                "attempted_path": repo_path,
+                                "error": error
+                            }
+                        )
+                    return {"success": False, "error": f"Invalid repository path: {error}"}
+                
+                try:
+                    analysis = repo_analyzer_service.analyze_repository(
+                        repo_path=repo_path,
+                        max_depth=max_depth,
+                        max_files=max_files
+                    )
+                    
+                    # Convertir en dict pour JSON
+                    from dataclasses import asdict
+                    try:
+                        analysis_dict = asdict(analysis)
+                    except Exception:
+                        # Fallback si asdict échoue
+                        analysis_dict = {
+                            "repo_path": analysis.repo_path,
+                            "structure": analysis.structure,
+                            "stack": analysis.stack,
+                            "summary": analysis.summary,
+                            "tech_debt": analysis.tech_debt,
+                            "analyzed_at": analysis.analyzed_at,
+                            "file_count": analysis.file_count,
+                            "total_size": analysis.total_size
+                        }
+                    
+                    return {
+                        "success": True,
+                        "analysis": analysis_dict
+                    }
+                except Exception as e:
+                    import traceback
+                    error_details = traceback.format_exc()
+                    # Logger l'erreur sans utiliser sys.stderr (qui peut ne pas être disponible)
+                    try:
+                        print(f"[Dispatcher] Repo analysis error: {error_details}")
+                    except:
+                        pass
+                    return {"success": False, "error": str(e)}
+            else:
+                return {"success": False, "error": "repo_analyzer_service is None"}
+        
+        # Obtenir uniquement le résumé
+        if cmd == "get_repo_summary":
+            try:
+                from services.repo_analyzer_service import repo_analyzer_service
+            except ImportError as e:
+                return {"success": False, "error": f"Service not available: {str(e)}"}
+            
+            if not repo_analyzer_service:
+                return {"success": False, "error": "repo_analyzer_service is None"}
+            
+            repo_path = payload.get("repo_path")
+            if not repo_path:
+                return {"success": False, "error": "repo_path is required"}
+            
+            try:
+                analysis = repo_analyzer_service.analyze_repository(repo_path)
+                return {
+                    "success": True,
+                    "summary": analysis.summary
+                }
+            except Exception as e:
+                return {"success": False, "error": str(e)}
+        
+        # Détecter uniquement les dettes techniques
+        if cmd == "detect_tech_debt":
+            try:
+                from services.repo_analyzer_service import repo_analyzer_service
+            except ImportError as e:
+                return {"success": False, "error": f"Service not available: {str(e)}"}
+            
+            if not repo_analyzer_service:
+                return {"success": False, "error": "repo_analyzer_service is None"}
+            
+            repo_path = payload.get("repo_path")
+            max_files = payload.get("max_files", 1000)
+            
+            if not repo_path:
+                return {"success": False, "error": "repo_path is required"}
+            
+            try:
+                analysis = repo_analyzer_service.analyze_repository(
+                    repo_path=repo_path,
+                    max_files=max_files
+                )
+                return {
+                    "success": True,
+                    "tech_debt": analysis.tech_debt
+                }
+            except Exception as e:
+                return {"success": False, "error": str(e)}
+
+        # --- GESTION DES CONVERSATIONS PROJETS (V2.1) ---
+        if chat_history_service:
+            # Mettre à jour le projectId d'une conversation
+            if cmd == "update_conversation_project":
+                chat_id = payload.get("chat_id")
+                project_id = payload.get("project_id")  # Peut être None pour retirer le lien
+                
+                if not chat_id:
+                    return {"success": False, "error": "chat_id is required"}
+                
+                try:
+                    success = chat_history_service.update_conversation_project(chat_id, project_id)
+                    return {"success": success}
+                except Exception as e:
+                    return {"success": False, "error": str(e)}
+
+        # --- GESTION DES PROJETS (V2.1) ---
+        if project_service:
+            # Lister tous les projets
+            if cmd == "projects_list":
+                try:
+                    projects = project_service.list_projects()
+                    return {
+                        "success": True,
+                        "projects": [p.to_dict() for p in projects]
+                    }
+                except Exception as e:
+                    return {"success": False, "error": str(e)}
+            
+            # Récupérer un projet par ID
+            if cmd == "projects_get":
+                project_id = payload.get("project_id")
+                if not project_id:
+                    return {"success": False, "error": "project_id is required"}
+                
+                try:
+                    project = project_service.get_project(project_id)
+                    if project:
+                        return {"success": True, "project": project.to_dict()}
+                    else:
+                        return {"success": False, "error": "Project not found"}
+                except Exception as e:
+                    return {"success": False, "error": str(e)}
+            
+            # Créer un nouveau projet
+            if cmd == "projects_create":
+                name = payload.get("name")
+                if not name:
+                    return {"success": False, "error": "name is required"}
+                
+                try:
+                    project = project_service.create_project(
+                        name=name,
+                        description=payload.get("description"),
+                        scopePath=payload.get("scopePath"),
+                        permissions=payload.get("permissions")
+                    )
+                    return {"success": True, "project": project.to_dict()}
+                except Exception as e:
+                    return {"success": False, "error": str(e)}
+            
+            # Mettre à jour un projet
+            if cmd == "projects_update":
+                project_id = payload.get("project_id")
+                if not project_id:
+                    return {"success": False, "error": "project_id is required"}
+                
+                updates = payload.get("updates", {})
+                if not updates:
+                    return {"success": False, "error": "updates is required"}
+                
+                try:
+                    project = project_service.update_project(project_id, updates)
+                    if project:
+                        return {"success": True, "project": project.to_dict()}
+                    else:
+                        return {"success": False, "error": "Project not found"}
+                except Exception as e:
+                    return {"success": False, "error": str(e)}
+            
+            # Supprimer un projet
+            if cmd == "projects_delete":
+                project_id = payload.get("project_id")
+                if not project_id:
+                    return {"success": False, "error": "project_id is required"}
+                
+                try:
+                    success = project_service.delete_project(project_id)
+                    return {"success": success}
+                except Exception as e:
+                    return {"success": False, "error": str(e)}
+            
+            # Ajouter un repository à un projet
+            if cmd == "projects_add_repo":
+                project_id = payload.get("project_id")
+                repo_path = payload.get("repo_path")
+                
+                if not project_id or not repo_path:
+                    return {"success": False, "error": "project_id and repo_path are required"}
+                
+                # ✅ VALIDATION PATH TRAVERSAL (Sécurité critique)
+                is_safe, error = path_validator.is_safe_repo_path(repo_path)
+                if not is_safe:
+                    print(f"[SECURITY] Path traversal attempt blocked in projects_add_repo: {repo_path} - {error}", file=sys.stderr)
+                    if audit_service:
+                        audit_service.log_action(
+                            ActionType.FILE_READ,
+                            {
+                                "blocked": True,
+                                "reason": "path_traversal_denied",
+                                "attempted_path": repo_path,
+                                "project_id": project_id,
+                                "error": error
+                            }
+                        )
+                    return {"success": False, "error": f"Invalid repository path: {error}"}
+                
+                try:
+                    project = project_service.add_repo_to_project(
+                        project_id=project_id,
+                        repo_path=repo_path,
+                        analysis=payload.get("analysis")
+                    )
+                    if project:
+                        return {"success": True, "project": project.to_dict()}
+                    else:
+                        return {"success": False, "error": "Project not found"}
+                except Exception as e:
+                    return {"success": False, "error": str(e)}
+            
+            # Retirer un repository d'un projet
+            if cmd == "projects_remove_repo":
+                project_id = payload.get("project_id")
+                repo_path = payload.get("repo_path")
+                
+                if not project_id or not repo_path:
+                    return {"success": False, "error": "project_id and repo_path are required"}
+                
+                try:
+                    project = project_service.remove_repo_from_project(
+                        project_id=project_id,
+                        repo_path=repo_path
+                    )
+                    if project:
+                        return {"success": True, "project": project.to_dict()}
+                    else:
+                        return {"success": False, "error": "Project not found"}
+                except Exception as e:
+                    return {"success": False, "error": str(e)}
+            
+            # V2.1 Sprint 2.2 : Récupérer ou créer projet "Orphelin"
+            if cmd == "projects_get_or_create_orphan":
+                language = payload.get("language", "fr")
+                try:
+                    orphan_project = project_service.get_or_create_orphan_project(language)
+                    return {"success": True, "project": orphan_project.to_dict()}
+                except Exception as e:
+                    return {"success": False, "error": str(e)}
 
         raise ValueError(f"Unknown command: {cmd}")

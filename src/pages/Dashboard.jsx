@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  Sparkles, 
-  Send, 
-  MessageSquare, 
-  Download, 
-  Loader2, 
-  CheckCircle, 
+import {
+  Sparkles,
+  Send,
+  MessageSquare,
+  Download,
+  Loader2,
+  CheckCircle,
   ArrowRight,
   Zap,
   Box,
@@ -18,10 +18,11 @@ import { useTheme } from '../contexts/ThemeContext';
 import { requestWorker, setupStreamListener } from '../services/bridge';
 import { translations } from '../constants/translations';
 import LiquidGauge, { LiquidGaugeBar } from '../components/LiquidGauge';
+import AnimatedInteractiveButton from '../components/AnimatedInteractiveButton';
 
-const Dashboard = ({ 
-  systemStats, 
-  language = 'en', 
+const Dashboard = ({
+  systemStats,
+  language = 'en',
   healthStatus = 'healthy',
   selectedModel,
   setActiveTab,
@@ -31,13 +32,13 @@ const Dashboard = ({
   const { isDarkMode } = useTheme();
   const t = translations[language] || translations.en;
   const d = t.dashboard || translations.en.dashboard; // Traductions Dashboard
-  
+
   // Mini Chat State
   const [quickInput, setQuickInput] = useState('');
   const [quickResponse, setQuickResponse] = useState('');
   const [isThinking, setIsThinking] = useState(false);
   const responseRef = useRef(null);
-  
+
   // Model Download State
   const [downloadingModel, setDownloadingModel] = useState(null);
   const [pullProgress, setPullProgress] = useState(null);
@@ -65,16 +66,16 @@ const Dashboard = ({
     const setupListener = async () => {
       unlisten = await setupStreamListener((payload) => {
         if (!isMounted) return;
-        
+
         // Événements de chat (mini-chat)
         if (payload.event === "token" && payload.data !== undefined && isThinking) {
           setQuickResponse(prev => prev + payload.data);
         }
-        
+
         if (payload.event === "done" && payload.chat_id && isThinking) {
           setIsThinking(false);
         }
-        
+
         // Événements de pull
         if (payload.model) {
           if (payload.event === "progress") {
@@ -107,8 +108,8 @@ const Dashboard = ({
 
     // Si pas de modèle sélectionné, afficher un message d'aide
     if (!selectedModel) {
-      setQuickResponse(language === 'fr' 
-        ? "⚠️ Veuillez d'abord sélectionner un modèle dans le menu déroulant en haut de l'écran (SELECT MODEL).\n\nSi aucun modèle n'apparaît, installez-en un en cliquant sur 'Install' ci-dessous." 
+      setQuickResponse(language === 'fr'
+        ? "⚠️ Veuillez d'abord sélectionner un modèle dans le menu déroulant en haut de l'écran (SELECT MODEL).\n\nSi aucun modèle n'apparaît, installez-en un en cliquant sur 'Install' ci-dessous."
         : "⚠️ Please select a model from the dropdown menu at the top (SELECT MODEL).\n\nIf no models appear, install one by clicking 'Install' below.");
       return;
     }
@@ -124,18 +125,18 @@ const Dashboard = ({
         chat_id: null,
         language: language
       });
-      
+
       // Si pas de réponse après 2 secondes, vérifier Ollama
       setTimeout(() => {
         if (isThinking && !quickResponse) {
           // Le streaming devrait avoir commencé
         }
       }, 2000);
-      
+
     } catch (e) {
       console.error("Chat error:", e);
-      setQuickResponse(language === 'fr' 
-        ? "❌ Erreur de connexion. Vérifiez que :\n• Ollama est bien lancé\n• Le modèle est correctement installé\n\nLancez Ollama avec : ollama serve" 
+      setQuickResponse(language === 'fr'
+        ? "❌ Erreur de connexion. Vérifiez que :\n• Ollama est bien lancé\n• Le modèle est correctement installé\n\nLancez Ollama avec : ollama serve"
         : "❌ Connection error. Please check:\n• Ollama is running\n• Model is properly installed\n\nStart Ollama with: ollama serve");
       setIsThinking(false);
     }
@@ -146,7 +147,7 @@ const Dashboard = ({
     if (!modelName || downloadingModel) return;
     setDownloadingModel(modelName);
     setPullProgress("Starting...");
-    
+
     try {
       await requestWorker("pull", { model: modelName });
     } catch (error) {
@@ -169,36 +170,36 @@ const Dashboard = ({
   };
 
   return (
-    <div className="relative w-full h-full overflow-y-auto bg-transparent p-8 custom-scrollbar">
-      <div className="max-w-5xl mx-auto space-y-8">
-        
+    <div className="relative w-full h-full overflow-y-auto bg-transparent p-4 sm:p-6 md:p-8 custom-scrollbar">
+      <div className="max-w-5xl mx-auto space-y-6 sm:space-y-8">
+
         {/* === WELCOME HEADER === */}
-        <div className="text-center py-8">
-          <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold uppercase tracking-widest mb-6 ${isDarkMode ? 'bg-gray-500/10 border border-gray-500/20 text-gray-400' : 'bg-gray-200 border border-gray-300 text-gray-600'}`}>
-            <Sparkles size={14} />
-            {healthStatus === 'healthy' 
+        <div className="text-center py-4 sm:py-6 md:py-8">
+          <div className={`inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-[10px] sm:text-xs font-bold uppercase tracking-widest mb-4 sm:mb-6 ${isDarkMode ? 'bg-gray-500/10 border border-gray-500/20 text-gray-400' : 'bg-gray-200 border border-gray-300 text-gray-600'}`}>
+            <Sparkles size={12} className="sm:w-[14px] sm:h-[14px]" />
+            {healthStatus === 'healthy'
               ? (language === 'fr' ? 'Système Prêt' : 'System Ready')
               : (language === 'fr' ? 'Connexion...' : 'Connecting...')}
           </div>
-          
-          <h1 className="text-4xl md:text-5xl font-black tracking-tight mb-3">
+
+          <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black tracking-tight mb-2 sm:mb-3 px-4">
             {getGreeting()}, <span className={isDarkMode ? 'text-gray-300' : 'text-gray-700'}>{userName}</span>
           </h1>
-          
-          <p className={`text-lg ${isDarkMode ? 'text-white/50' : 'text-slate-500'}`}>
-            {language === 'fr' 
-              ? "Comment puis-je vous aider aujourd'hui ?" 
+
+          <p className={`text-sm sm:text-base md:text-lg px-4 ${isDarkMode ? 'text-white/50' : 'text-slate-500'}`}>
+            {language === 'fr'
+              ? "Comment puis-je vous aider aujourd'hui ?"
               : "How can I help you today?"}
           </p>
         </div>
 
         {/* === MINI CHAT BOX === */}
-        <div className={`p-6 rounded-[32px] border backdrop-blur-xl transition-all
+        <div className={`p-4 sm:p-6 rounded-2xl sm:rounded-[32px] border backdrop-blur-xl transition-all
           ${isDarkMode ? 'bg-black/40 border-white/10' : 'bg-white border-slate-200 shadow-xl'}
         `}>
           {/* Zone de réponse */}
           {(quickResponse || isThinking) && (
-            <div 
+            <div
               ref={responseRef}
               className={`mb-6 p-5 rounded-2xl max-h-[200px] overflow-y-auto custom-scrollbar
                 ${isDarkMode ? 'bg-white/5' : 'bg-slate-50'}
@@ -213,7 +214,7 @@ const Dashboard = ({
                 </div>
               )}
               <p className="text-sm leading-relaxed whitespace-pre-wrap">{quickResponse}</p>
-              
+
               {/* Bouton pour continuer dans le chat complet */}
               {quickResponse && !isThinking && (
                 <button
@@ -229,33 +230,36 @@ const Dashboard = ({
           )}
 
           {/* Input */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <div className="flex-1 relative">
               <input
                 type="text"
                 value={quickInput}
                 onChange={(e) => setQuickInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleQuickChat()}
-                placeholder={selectedModel 
+                placeholder={selectedModel
                   ? (language === 'fr' ? "Posez votre question..." : "Ask anything...")
                   : (language === 'fr' ? "Sélectionnez un modèle d'abord ↗" : "Select a model first ↗")}
                 disabled={!selectedModel || isThinking}
-                className={`w-full px-6 py-4 rounded-2xl text-sm font-medium outline-none transition-all
-                  ${isDarkMode 
-                    ? 'bg-white/5 border border-white/10 focus:border-gray-400/50' 
+                className={`w-full px-4 sm:px-6 py-3 sm:py-4 rounded-2xl text-xs sm:text-sm font-medium outline-none transition-all
+                  ${isDarkMode
+                    ? 'bg-white/5 border border-white/10 focus:border-gray-400/50'
                     : 'bg-slate-100 border border-slate-200 focus:border-gray-400'}
                   disabled:opacity-40 disabled:cursor-not-allowed
                 `}
               />
             </div>
-            
-            <button
+
+            <AnimatedInteractiveButton
               onClick={() => handleQuickChat()}
               disabled={!quickInput.trim() || !selectedModel || isThinking}
-              className={`p-4 rounded-2xl text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95 ${isDarkMode ? 'btn-metal-dark' : 'btn-metal-light text-gray-700'}`}
+              intensity="low"
+              enableSound={true}
+              soundOn="click"
+              className={`p-3 sm:p-4 rounded-2xl text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all flex-shrink-0 ${isDarkMode ? 'btn-metal-dark' : 'btn-metal-light text-gray-700'}`}
             >
-              {isThinking ? <Loader2 size={20} className="animate-spin" /> : <Send size={20} />}
-            </button>
+              {isThinking ? <Loader2 size={18} className="sm:w-5 sm:h-5 animate-spin" /> : <Send size={18} className="sm:w-5 sm:h-5" />}
+            </AnimatedInteractiveButton>
           </div>
 
           {/* Quick Prompts */}
@@ -267,14 +271,14 @@ const Dashboard = ({
                   setQuickInput(prompt.text);
                 }}
                 disabled={!selectedModel}
-                className={`px-4 py-2 rounded-xl text-xs font-medium transition-all
-                  ${isDarkMode 
-                    ? 'bg-white/5 hover:bg-white/10 border border-white/5' 
+                className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl text-[10px] sm:text-xs font-medium transition-all
+                  ${isDarkMode
+                    ? 'bg-white/5 hover:bg-white/10 border border-white/5'
                     : 'bg-slate-100 hover:bg-slate-200 border border-slate-200'}
                   disabled:opacity-30
                 `}
               >
-                {prompt.icon} {prompt.text}
+                {prompt.icon} <span className="hidden sm:inline">{prompt.text}</span><span className="sm:hidden">{prompt.text.split(' ')[0]}</span>
               </button>
             ))}
           </div>
@@ -318,7 +322,7 @@ const Dashboard = ({
               {language === 'fr' ? "Cliquez pour installer" : "Click to install"}
             </span>
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {popularModels.map((model, i) => (
               <ModelCard
@@ -344,8 +348,8 @@ const Dashboard = ({
                 {language === 'fr' ? 'Monitoring Système' : 'System Monitoring'}
               </span>
             </div>
-            
-            <div className="flex items-center justify-center gap-8 flex-wrap">
+
+            <div className="flex items-center justify-center gap-4 sm:gap-6 md:gap-8 flex-wrap">
               {/* CPU Gauge */}
               <LiquidGauge
                 value={systemStats.cpu?.usage_percent || 0}
@@ -355,7 +359,7 @@ const Dashboard = ({
                 size="md"
                 isDarkMode={isDarkMode}
               />
-              
+
               {/* RAM Gauge */}
               <LiquidGauge
                 value={systemStats.ram?.usage_percent || 0}
@@ -365,7 +369,7 @@ const Dashboard = ({
                 size="md"
                 isDarkMode={isDarkMode}
               />
-              
+
               {/* GPU Gauge (si disponible) */}
               {systemStats.gpu?.available && (
                 <LiquidGauge
@@ -378,7 +382,7 @@ const Dashboard = ({
                 />
               )}
             </div>
-            
+
             {/* VRAM Bar (si GPU disponible) */}
             {systemStats.gpu?.available && systemStats.vramTotal > 0 && (
               <div className="mt-6 pt-4 border-t border-white/5">
@@ -401,7 +405,7 @@ const Dashboard = ({
           <div className="flex items-center gap-4">
             <div className={`w-2 h-2 rounded-full ${healthStatus === 'healthy' ? 'bg-emerald-500' : 'bg-amber-500'} animate-pulse`} />
             <span className="text-xs font-medium opacity-60">
-              {selectedModel 
+              {selectedModel
                 ? `${language === 'fr' ? 'Modèle actif:' : 'Active model:'} ${selectedModel}`
                 : (language === 'fr' ? 'Aucun modèle sélectionné' : 'No model selected')}
             </span>
@@ -421,15 +425,15 @@ const QuickActionCard = ({ icon: Icon, title, desc, onClick, isDarkMode, color }
   <button
     onClick={onClick}
     className={`p-6 rounded-[24px] border text-left transition-all group hover:scale-[1.02] active:scale-[0.98]
-      ${isDarkMode 
-        ? 'bg-black/30 border-white/10 hover:border-white/20' 
+      ${isDarkMode
+        ? 'bg-black/30 border-white/10 hover:border-white/20'
         : 'bg-white border-slate-200 shadow-lg hover:shadow-xl'}
     `}
   >
     <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-4 transition-transform group-hover:scale-110
-      ${color === 'indigo' ? (isDarkMode ? 'bg-gray-500/10 text-gray-400' : 'bg-gray-200 text-gray-600') : 
-        color === 'emerald' ? 'bg-emerald-500/10 text-emerald-500' : 
-        (isDarkMode ? 'bg-gray-500/10 text-gray-400' : 'bg-gray-200 text-gray-600')}
+      ${color === 'indigo' ? (isDarkMode ? 'bg-gray-500/10 text-gray-400' : 'bg-gray-200 text-gray-600') :
+        color === 'emerald' ? 'bg-emerald-500/10 text-emerald-500' :
+          (isDarkMode ? 'bg-gray-500/10 text-gray-400' : 'bg-gray-200 text-gray-600')}
     `}>
       <Icon size={24} />
     </div>
@@ -440,8 +444,8 @@ const QuickActionCard = ({ icon: Icon, title, desc, onClick, isDarkMode, color }
 
 const ModelCard = ({ model, isDownloading, progress, onDownload, isDarkMode }) => (
   <div className={`p-5 rounded-[24px] border transition-all
-    ${isDarkMode 
-      ? 'bg-black/30 border-white/10' 
+    ${isDarkMode
+      ? 'bg-black/30 border-white/10'
       : 'bg-white border-slate-200 shadow-md'}
   `}>
     <div className="flex items-start justify-between mb-3">
@@ -451,10 +455,10 @@ const ModelCard = ({ model, isDownloading, progress, onDownload, isDarkMode }) =
       </div>
       <span className="text-xs opacity-40">{model.size}</span>
     </div>
-    
+
     <div className="flex items-center justify-between">
       <span className="text-xs opacity-40">{model.speed}</span>
-      
+
       <button
         onClick={onDownload}
         disabled={isDownloading}
@@ -473,12 +477,12 @@ const ModelCard = ({ model, isDownloading, progress, onDownload, isDarkMode }) =
         )}
       </button>
     </div>
-    
+
     {isDownloading && typeof progress === 'number' && (
       <div className="mt-3 w-full h-1 rounded-full bg-white/10 overflow-hidden">
-        <div 
-          className="h-full bg-gray-500 transition-all" 
-          style={{ width: `${progress}%` }} 
+        <div
+          className="h-full bg-gray-500 transition-all"
+          style={{ width: `${progress}%` }}
         />
       </div>
     )}

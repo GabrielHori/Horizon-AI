@@ -4,16 +4,44 @@
 node_modules/
 .pnpm-store/
 .npm/
+.yarn/
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnp.*
 
 # ========================================
 # BUILD OUTPUTS
 # ========================================
 dist/
 build/
+out/
+
+# Rust build artifacts (compiled files)
+**/target/**/*.exe
+**/target/**/*.dll
+**/target/**/*.pdb
+**/target/**/*.d
+**/target/**/*.lib
+**/target/**/*.exp
+**/target/**/*.rlib
+**/target/**/*.rmeta
+**/target/**/incremental/
+**/target/**/deps/
+**/target/**/.rustc_info.json
+**/target/**/CACHEDIR.TAG
+**/target/**/.cargo-lock
+
+# Rust compile artifacts (even outside target)
 *.exe
 *.dll
 *.pdb
 *.d
+*.lib
+*.exp
+*.rlib
+*.rmeta
 
 # Tauri build artifacts
 src-tauri/target/
@@ -28,26 +56,114 @@ dist/backend/
 # ========================================
 # Vite
 .vite/
+.vite-inspect/
 
+# Parcel
+.parcel-cache/
+.cache/
+
+# ESLint
+.eslintcache
+
+# TypeScript
+*.tsbuildinfo
+
+# Turbopack
+.turbo/
+
+# Storybook
+storybook-static/
+.out/
+
+# ========================================
 # IDE
+# ========================================
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
 
+# Cursor IDE
+.cursor/
+.cursorrules
+*.cursor/
+
+# JetBrains IDEs
+*.iml
+.idea/
+*.ipr
+*.iws
+out/
+
+# Visual Studio Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
 # ========================================
 # PYTHON
 # ========================================
 .venv/
 venv/
+env/
+ENV/
+.ENV/
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
+*.pyc
+*.pyo
+*.pyd
 .Python
 pip-log.txt
 pip-delete-this-directory.txt
+
+# Python testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.hypothesis/
+.nox/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb
+
+# Python virtual environments
+*.egg-info/
+dist/
+*.egg
+build/
+develop-eggs/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.manifest
+*.spec
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# pytype
+.pytype/
 
 # ========================================
 # LOGS & DATA (user-specific)
@@ -55,14 +171,71 @@ pip-delete-this-directory.txt
 logs/
 data/
 *.log
+*.log.*
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+pnpm-debug.log*
+turbo-*.log
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+*.db-shm
+*.db-wal
 
 # ========================================
 # OS FILES
 # ========================================
+# macOS
 .DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# Windows
 Thumbs.db
-Desktop.ini
+Thumbs.db:encryptable
 ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# Linux
+*~
+.directory
+.Trash-*
+
+# Windows Subsystem for Linux (WSL)
+.wslconfig
+
+# ========================================
+# BACKUP & TEMPORARY FILES
+# ========================================
+*.old
+*.backup
+*.bak
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+*.orig
+*.save
+*.save.*
+
+# Fichiers de sauvegarde spécifiques
+**/*.old.jsx
+**/*.old.js
+**/*.old.ts
+**/*.old.tsx
+**/*_old.*
+**/*backup.*
 
 # ========================================
 # MISC
@@ -72,6 +245,37 @@ ehthumbs.db
 .env.*
 !.env.example
 
+# Test coverage
+coverage/
+.nyc_output/
+*.lcov
+
+# Temporary documentation files (uncomment if needed)
+# *_PROGRESS.md
+# *_COMPLETE.md
+
 # Lock files (optional - uncomment if you want to ignore)
 # package-lock.json
 # Cargo.lock
+# yarn.lock
+# pnpm-lock.yaml
+
+# ========================================
+# SECURITY & SENSITIVE DATA
+# ========================================
+*.pem
+*.key
+*.crt
+*.cert
+secrets/
+.secrets/
+*.secret# ========================================
+# Tauri specific
+# ========================================
+src-tauri/target/
+src-tauri/gen/
+*.app
+*.dmg
+*.deb
+*.rpm
+*.AppImage

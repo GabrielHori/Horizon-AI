@@ -167,7 +167,7 @@ impl<R: Runtime> PythonBridge<R> {
             map.insert(id.clone(), tx);
         }
 
-        let req = PyRequest { id: id.clone(), cmd, payload };
+        let req = PyRequest { id: id.clone(), cmd: cmd.clone(), payload };
         let req_json = serde_json::to_string(&req).map_err(|e| e.to_string())?;
 
         self.tx_command
@@ -189,10 +189,26 @@ impl<R: Runtime> PythonBridge<R> {
             }
             Ok(Err(_)) => Err("Worker crashed or request lost".into()),
             Err(_) => {
-                // Nettoyer la requête en attente pour éviter les fuites mémoire
+                // ✅ AMÉLIORATION V2.1 : Timeout avec feedback utilisateur
+                // 1. Logger la tentative pour debugging
+                eprintln!("[BRIDGE ERROR] Request timeout for command: {}", cmd);
+                
+                // 2. Émettre événement vers frontend pour notification utilisateur
+                let timeout_event = serde_json::json!({
+                    "cmd": cmd,
+                    "timeout_secs": 30,
+                    "timestamp": chrono::Utc::now().to_rfc3339(),
+                    "request_id": id
+                });
+                
+                let _ = self.app_handle.emit("worker-timeout", timeout_event);
+                
+                // 3. Nettoyer la map des requêtes en attente pour éviter les fuites mémoire
                 let mut map = self.pending.lock().await;
                 map.remove(&id);
-                Err("Request timeout: Python worker did not respond within 30 seconds".into())
+                
+                // 4. Retourner une erreur détaillée
+                Err(format!("Request timeout: Python worker did not respond to '{}' within 30 seconds", cmd))
             }
         }
     }

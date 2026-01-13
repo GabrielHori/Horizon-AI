@@ -3,6 +3,7 @@ import AppLayout from './Layouts/AppLayout';
 import OllamaSetup from './components/OllamaSetup';
 import OnboardingTour from './components/OnboardingTour';
 import TitleBar from './components/TitleBar';
+import TimeoutNotification from './components/TimeoutNotification';
 import { requestWorker } from './services/bridge';
 
 function App() {
@@ -49,7 +50,7 @@ function App() {
 
     const fetchStats = async () => {
       if (!isMounted) return;
-      
+
       const raw = await requestWorker("get_monitoring");
       if (!raw || !isMounted) return;
 
@@ -121,9 +122,12 @@ function App() {
           backendLaunched={true}
         />
       </div>
-      
+
       {/* Guide interactif au premier lancement */}
       <OnboardingTour language={language} />
+
+      {/* Notifications de timeout IPC (Tâche 2.2) */}
+      <TimeoutNotification language={language} />
     </div>
   );
 }

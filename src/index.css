@@ -10,29 +10,29 @@
   --color-void-100: #000000;
   --color-void-200: #030303;
   --color-void-300: #050505;
-  
+
   /* Metal Colors - Liquid chrome */
   --color-metal-100: #0a0a0a;
   --color-metal-200: #111111;
   --color-metal-300: #1a1a1a;
   --color-metal-400: #2a2a2a;
   --color-metal-shine: #3a3a3a;
-  
+
   /* Glass Colors - Transparent layers */
   --color-glass-100: rgba(255, 255, 255, 0.02);
   --color-glass-200: rgba(255, 255, 255, 0.04);
   --color-glass-300: rgba(255, 255, 255, 0.06);
   --color-glass-border: rgba(255, 255, 255, 0.08);
-  
+
   /* Prism Colors - Iridescent accents */
   --color-prism-cyan: rgba(34, 211, 238, 0.6);
   --color-prism-magenta: rgba(236, 72, 153, 0.6);
   --color-prism-blue: rgba(99, 102, 241, 0.8);
   --color-prism-purple: rgba(168, 85, 247, 0.7);
-  
+
   /* Liquid Light - Metallic gradients */
   --gradient-liquid-metal: linear-gradient(135deg, #1a1a1a 0%, #0a0a0a 50%, #111111 100%);
-  --gradient-chrome-shine: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.1) 50%, transparent 100%);
+  --gradient-chrome-shine: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.1) 50%, transparent 100%);
   --gradient-prism-edge: linear-gradient(135deg, var(--color-prism-cyan) 0%, var(--color-prism-magenta) 100%);
 }
 
@@ -60,8 +60,93 @@
 
 /* --- 3. BASE STYLES --- */
 #root {
-  min-width: 1100px; 
-  min-height: 650px;
+  min-width: 100%;
+  min-height: 100vh;
+  width: 100vw;
+  height: 100vh;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   📱 RESPONSIVE BREAKPOINTS - Custom for ultra-wide screens
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Breakpoints personnalisés pour écrans ultra-larges */
+@media (min-width: 1920px) {
+  /* FullHD - Augmenter les espacements */
+  .responsive-container {
+    max-width: 1600px;
+    padding-left: 3rem;
+    padding-right: 3rem;
+  }
+}
+
+@media (min-width: 2560px) {
+  /* 21:9 Ultra-wide (2560x1080) ou 2K */
+  .responsive-container {
+    max-width: 2200px;
+    padding-left: 6rem;
+    padding-right: 6rem;
+  }
+  
+  /* Augmenter la taille des grids */
+  .responsive-grid-2 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .responsive-grid-3 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (min-width: 3440px) {
+  /* 21:9 Ultra-wide (3440x1440) */
+  .responsive-container {
+    max-width: 2800px;
+    padding-left: 8rem;
+    padding-right: 8rem;
+  }
+  
+  .responsive-grid-2 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  
+  .responsive-grid-3 {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+@media (min-width: 3840px) {
+  /* 4K (3840x2160) */
+  .responsive-container {
+    max-width: 3200px;
+    padding-left: 10rem;
+    padding-right: 10rem;
+  }
+  
+  .responsive-grid-2 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  
+  .responsive-grid-3 {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+@media (min-width: 5120px) {
+  /* 32:9 Super ultra-wide (5120x1440) ou 5K */
+  .responsive-container {
+    max-width: 4200px;
+    padding-left: 12rem;
+    padding-right: 12rem;
+  }
+  
+  .responsive-grid-2 {
+    grid-template-columns: repeat(4, 1fr);
+  }
+  
+  .responsive-grid-3 {
+    grid-template-columns: repeat(5, 1fr);
+  }
 }
 
 body {
@@ -74,7 +159,11 @@ body {
   overflow: hidden;
 }
 
-input, textarea, [contenteditable], .prose, .selectable {
+input,
+textarea,
+[contenteditable],
+.prose,
+.selectable {
   -webkit-user-select: text;
   user-select: text;
 }
@@ -85,30 +174,38 @@ input, textarea, [contenteditable], .prose, .selectable {
 
 /* Ambient blob movement */
 @keyframes liquid-drift {
-  0%, 100% { 
+
+  0%,
+  100% {
     transform: translate(0, 0) scale(1) rotate(0deg);
     opacity: 0.3;
   }
-  25% { 
+
+  25% {
     transform: translate(50px, -30px) scale(1.1) rotate(90deg);
     opacity: 0.5;
   }
-  50% { 
+
+  50% {
     transform: translate(-20px, 50px) scale(0.95) rotate(180deg);
     opacity: 0.4;
   }
-  75% { 
+
+  75% {
     transform: translate(30px, 20px) scale(1.05) rotate(270deg);
     opacity: 0.6;
   }
 }
 
 @keyframes liquid-pulse {
-  0%, 100% { 
+
+  0%,
+  100% {
     filter: blur(80px) brightness(1);
     transform: scale(1);
   }
-  50% { 
+
+  50% {
     filter: blur(100px) brightness(1.3);
     transform: scale(1.1);
   }
@@ -116,17 +213,25 @@ input, textarea, [contenteditable], .prose, .selectable {
 
 /* Chrome shine effect */
 @keyframes chrome-sweep {
-  0% { transform: translateX(-200%) skewX(-20deg); }
-  100% { transform: translateX(400%) skewX(-20deg); }
+  0% {
+    transform: translateX(-200%) skewX(-20deg);
+  }
+
+  100% {
+    transform: translateX(400%) skewX(-20deg);
+  }
 }
 
 /* Prism edge glow */
 @keyframes prism-glow {
-  0%, 100% { 
+
+  0%,
+  100% {
     opacity: 0.4;
     filter: hue-rotate(0deg);
   }
-  50% { 
+
+  50% {
     opacity: 0.8;
     filter: hue-rotate(30deg);
   }
@@ -134,21 +239,30 @@ input, textarea, [contenteditable], .prose, .selectable {
 
 /* Mercury ripple effect */
 @keyframes mercury-ripple {
-  0% { 
+  0% {
     box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.4);
   }
-  70% { 
+
+  70% {
     box-shadow: 0 0 0 20px rgba(99, 102, 241, 0);
   }
-  100% { 
+
+  100% {
     box-shadow: 0 0 0 0 rgba(99, 102, 241, 0);
   }
 }
 
 /* Float animation */
 @keyframes float {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-10px); }
+
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-10px);
+  }
 }
 
 /* Page entry with liquid feel */
@@ -158,11 +272,13 @@ input, textarea, [contenteditable], .prose, .selectable {
     transform: translateY(30px) scale(0.95);
     filter: blur(10px);
   }
+
   60% {
     opacity: 1;
     transform: translateY(-5px) scale(1.02);
     filter: blur(0);
   }
+
   100% {
     opacity: 1;
     transform: translateY(0) scale(1);
@@ -176,15 +292,42 @@ input, textarea, [contenteditable], .prose, .selectable {
     transform: translateX(-100%);
     opacity: 0;
   }
+
   40% {
     transform: translateX(10%);
     opacity: 1;
   }
+
   70% {
     transform: translateX(-3%);
   }
+
   100% {
     transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Slide in from right (pour notifications) */
+@keyframes slide-in-right {
+  0% {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+
+  100% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Fade in simple */
+@keyframes fade-in {
+  0% {
+    opacity: 0;
+  }
+
+  100% {
     opacity: 1;
   }
 }
@@ -225,12 +368,34 @@ input, textarea, [contenteditable], .prose, .selectable {
   animation: viscous-slide 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
 }
 
+.animate-slide-in-right {
+  animation: slide-in-right 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out forwards;
+}
+
 /* Animation delays */
-.animation-delay-500 { animation-delay: 0.5s; }
-.animation-delay-1000 { animation-delay: 1s; }
-.animation-delay-2000 { animation-delay: 2s; }
-.animation-delay-3000 { animation-delay: 3s; }
-.animation-delay-4000 { animation-delay: 4s; }
+.animation-delay-500 {
+  animation-delay: 0.5s;
+}
+
+.animation-delay-1000 {
+  animation-delay: 1s;
+}
+
+.animation-delay-2000 {
+  animation-delay: 2s;
+}
+
+.animation-delay-3000 {
+  animation-delay: 3s;
+}
+
+.animation-delay-4000 {
+  animation-delay: 4s;
+}
 
 /* ═══════════════════════════════════════════════════════════════════════════
    💎 LIQUID METAL COMPONENTS
@@ -251,7 +416,7 @@ input, textarea, [contenteditable], .prose, .selectable {
   left: -100%;
   width: 50%;
   height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.03), transparent);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.03), transparent);
   transform: skewX(-20deg);
   transition: left 0.8s ease;
 }
@@ -276,14 +441,14 @@ input, textarea, [contenteditable], .prose, .selectable {
   left: -150%;
   width: 100%;
   height: 100%;
-  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.15) 50%, transparent 100%);
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.15) 50%, transparent 100%);
   transform: skewX(-20deg);
   transition: left 0.6s ease;
 }
 
 .btn-chrome:hover {
   border-color: rgba(99, 102, 241, 0.5);
-  box-shadow: 
+  box-shadow:
     0 0 20px rgba(99, 102, 241, 0.2),
     inset 0 1px 0 rgba(255, 255, 255, 0.1);
   transform: translateY(-2px);
@@ -309,13 +474,12 @@ input, textarea, [contenteditable], .prose, .selectable {
   left: 0;
   right: 0;
   height: 1px;
-  background: linear-gradient(90deg, 
-    transparent 0%, 
-    rgba(34, 211, 238, 0.5) 20%, 
-    rgba(236, 72, 153, 0.5) 50%, 
-    rgba(99, 102, 241, 0.5) 80%, 
-    transparent 100%
-  );
+  background: linear-gradient(90deg,
+      transparent 0%,
+      rgba(34, 211, 238, 0.5) 20%,
+      rgba(236, 72, 153, 0.5) 50%,
+      rgba(99, 102, 241, 0.5) 80%,
+      transparent 100%);
   animation: prism-glow 4s infinite ease-in-out;
 }
 
@@ -337,7 +501,7 @@ input, textarea, [contenteditable], .prose, .selectable {
 
 .mercury-input:focus {
   border-color: rgba(99, 102, 241, 0.5);
-  box-shadow: 
+  box-shadow:
     0 0 30px rgba(99, 102, 241, 0.15),
     inset 0 0 20px rgba(99, 102, 241, 0.05);
 }
@@ -355,13 +519,12 @@ input, textarea, [contenteditable], .prose, .selectable {
   top: 0;
   left: 0;
   height: 100%;
-  background: linear-gradient(90deg, 
-    rgba(99, 102, 241, 0.8) 0%, 
-    rgba(139, 92, 246, 0.9) 50%,
-    rgba(99, 102, 241, 0.8) 100%
-  );
+  background: linear-gradient(90deg,
+      rgba(99, 102, 241, 0.8) 0%,
+      rgba(139, 92, 246, 0.9) 50%,
+      rgba(99, 102, 241, 0.8) 100%);
   border-radius: inherit;
-  box-shadow: 
+  box-shadow:
     0 0 20px rgba(99, 102, 241, 0.5),
     inset 0 1px 0 rgba(255, 255, 255, 0.2);
   transition: width 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -410,7 +573,7 @@ input, textarea, [contenteditable], .prose, .selectable {
 
 /* Neon Glow - Liquid variant */
 .neon-liquid {
-  box-shadow: 
+  box-shadow:
     0 0 10px rgba(99, 102, 241, 0.3),
     0 0 20px rgba(99, 102, 241, 0.2),
     0 0 40px rgba(99, 102, 241, 0.1),
@@ -441,28 +604,31 @@ input, textarea, [contenteditable], .prose, .selectable {
 
 .hover-liquid:hover {
   transform: translateY(-4px);
-  box-shadow: 
+  box-shadow:
     0 20px 40px -15px rgba(0, 0, 0, 0.5),
     0 0 30px rgba(99, 102, 241, 0.1);
 }
 
 /* Iridescent shimmer */
 .shimmer-iridescent {
-  background: linear-gradient(
-    135deg,
-    rgba(255, 255, 255, 0) 0%,
-    rgba(255, 255, 255, 0.05) 25%,
-    rgba(34, 211, 238, 0.1) 50%,
-    rgba(236, 72, 153, 0.1) 75%,
-    rgba(255, 255, 255, 0) 100%
-  );
+  background: linear-gradient(135deg,
+      rgba(255, 255, 255, 0) 0%,
+      rgba(255, 255, 255, 0.05) 25%,
+      rgba(34, 211, 238, 0.1) 50%,
+      rgba(236, 72, 153, 0.1) 75%,
+      rgba(255, 255, 255, 0) 100%);
   background-size: 200% 200%;
   animation: shimmer 3s ease infinite;
 }
 
 @keyframes shimmer {
-  0% { background-position: 200% 200%; }
-  100% { background-position: -200% -200%; }
+  0% {
+    background-position: 200% 200%;
+  }
+
+  100% {
+    background-position: -200% -200%;
+  }
 }
 
 /* Metal reflection on text */
@@ -491,7 +657,7 @@ input, textarea, [contenteditable], .prose, .selectable {
 .btn-metal-dark {
   background: linear-gradient(135deg, #3a3a3a 0%, #1a1a1a 50%, #2a2a2a 100%);
   border: 1px solid rgba(255, 255, 255, 0.15);
-  box-shadow: 
+  box-shadow:
     0 4px 15px rgba(0, 0, 0, 0.4),
     inset 0 1px 0 rgba(255, 255, 255, 0.1),
     inset 0 -1px 0 rgba(0, 0, 0, 0.2);
@@ -514,7 +680,7 @@ input, textarea, [contenteditable], .prose, .selectable {
 .btn-metal-dark:hover {
   background: linear-gradient(135deg, #4a4a4a 0%, #2a2a2a 50%, #3a3a3a 100%);
   border-color: rgba(255, 255, 255, 0.25);
-  box-shadow: 
+  box-shadow:
     0 8px 25px rgba(0, 0, 0, 0.5),
     0 0 20px rgba(255, 255, 255, 0.05),
     inset 0 1px 0 rgba(255, 255, 255, 0.15),
@@ -528,7 +694,7 @@ input, textarea, [contenteditable], .prose, .selectable {
 
 .btn-metal-dark:active {
   transform: translateY(0) scale(0.98);
-  box-shadow: 
+  box-shadow:
     0 2px 10px rgba(0, 0, 0, 0.4),
     inset 0 2px 4px rgba(0, 0, 0, 0.3);
 }
@@ -537,7 +703,7 @@ input, textarea, [contenteditable], .prose, .selectable {
 .btn-metal-light {
   background: linear-gradient(135deg, #ffffff 0%, #e5e5e5 50%, #f0f0f0 100%);
   border: 1px solid rgba(0, 0, 0, 0.1);
-  box-shadow: 
+  box-shadow:
     0 4px 15px rgba(0, 0, 0, 0.1),
     inset 0 1px 0 rgba(255, 255, 255, 0.9),
     inset 0 -1px 0 rgba(0, 0, 0, 0.05);
@@ -560,7 +726,7 @@ input, textarea, [contenteditable], .prose, .selectable {
 .btn-metal-light:hover {
   background: linear-gradient(135deg, #f8f8f8 0%, #d5d5d5 50%, #e8e8e8 100%);
   border-color: rgba(0, 0, 0, 0.15);
-  box-shadow: 
+  box-shadow:
     0 8px 25px rgba(0, 0, 0, 0.15),
     inset 0 1px 0 rgba(255, 255, 255, 1),
     inset 0 -1px 0 rgba(0, 0, 0, 0.1);
@@ -573,7 +739,7 @@ input, textarea, [contenteditable], .prose, .selectable {
 
 .btn-metal-light:active {
   transform: translateY(0) scale(0.98);
-  box-shadow: 
+  box-shadow:
     0 2px 10px rgba(0, 0, 0, 0.1),
     inset 0 2px 4px rgba(0, 0, 0, 0.1);
 }
@@ -590,12 +756,11 @@ input, textarea, [contenteditable], .prose, .selectable {
   left: 10%;
   right: 10%;
   height: 2px;
-  background: linear-gradient(90deg, 
-    rgba(255, 100, 100, 0.8),
-    rgba(255, 200, 50, 0.8),
-    rgba(100, 255, 100, 0.8),
-    rgba(100, 200, 255, 0.8)
-  );
+  background: linear-gradient(90deg,
+      rgba(255, 100, 100, 0.8),
+      rgba(255, 200, 50, 0.8),
+      rgba(100, 255, 100, 0.8),
+      rgba(100, 200, 255, 0.8));
   border-radius: 2px;
   opacity: 0;
   transition: opacity 0.3s ease;
@@ -615,7 +780,7 @@ input, textarea, [contenteditable], .prose, .selectable {
 
 .card-metal:hover {
   border-color: rgba(255, 255, 255, 0.15);
-  box-shadow: 
+  box-shadow:
     0 8px 30px rgba(0, 0, 0, 0.4),
     0 0 0 1px rgba(255, 255, 255, 0.05);
   transform: translateY(-4px);
@@ -631,7 +796,7 @@ input, textarea, [contenteditable], .prose, .selectable {
 
 .card-metal-light:hover {
   border-color: rgba(0, 0, 0, 0.12);
-  box-shadow: 
+  box-shadow:
     0 8px 30px rgba(0, 0, 0, 0.12),
     0 0 0 1px rgba(0, 0, 0, 0.03);
   transform: translateY(-4px);
