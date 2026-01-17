@@ -8,7 +8,7 @@ import { requestWorker } from './services/bridge';
 import { DEFAULT_STYLE_ID } from './constants/ai_styles';
 
 function App() {
-  const [language, setLanguage] = useState('fr'); // Français par défaut
+  const [language, setLanguage] = useState('en'); // English by default
   const [activeTab, setActiveTab] = useState(() => {
     if (typeof window === 'undefined') return 'dashboard';
     const savedTab = window.localStorage.getItem('horizon.activeTab');

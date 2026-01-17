@@ -9,6 +9,7 @@ IMPORTANT - Philosophie LOCAL-FIRST:
 - Versioning pour traçabilité
 """
 
+import os
 import sys
 import json
 import uuid
@@ -140,7 +141,7 @@ class PromptBuilderService:
         
         # Déterminer le chemin de base pour les logs
         if getattr(sys, 'frozen', False):
-            appdata = sys.environ.get('APPDATA') or sys.environ.get('LOCALAPPDATA')
+            appdata = os.environ.get('APPDATA') or os.environ.get('LOCALAPPDATA')
             if appdata:
                 self.base_dir = Path(appdata) / "HorizonAI"
             else:

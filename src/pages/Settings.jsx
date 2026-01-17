@@ -12,7 +12,7 @@ export default function Settings({ userName, setUserName, language, setLanguage,
 
   const defaultSettings = {
     userName: userName || "Horizon",
-    language: language || "fr",
+    language: language || "en",
     internetAccess: false,
     gpuAcceleration: true,
     runAtStartup: false,
@@ -305,7 +305,7 @@ export default function Settings({ userName, setUserName, language, setLanguage,
               <div className={`flex items-center justify-between p-4 rounded-2xl ${isDarkMode ? 'bg-white/5' : 'bg-slate-50'}`}>
                 <div>
                   <p className="text-xs font-bold">{language === 'fr' ? 'Version' : 'Version'}</p>
-                  <p className={`text-[9px] ${isDarkMode ? 'opacity-40' : 'text-slate-400'}`}>Horizon AI v1.0</p>
+                  <p className={`text-[9px] ${isDarkMode ? 'opacity-40' : 'text-slate-400'}`}>Horizon AI v2</p>
                 </div>
                 <span className="px-3 py-1 rounded-lg bg-emerald-500/10 text-emerald-500 text-[9px] font-bold">STABLE</span>
               </div>
@@ -438,7 +438,7 @@ export default function Settings({ userName, setUserName, language, setLanguage,
 
         {/* Version Footer */}
         <div className={`text-center pt-8 ${isDarkMode ? 'text-white/20' : 'text-slate-300'}`}>
-          <p className="text-xs font-mono">Horizon AI v1.0</p>
+          <p className="text-xs font-mono">Horizon AI v2</p>
         </div>
       </div>
 

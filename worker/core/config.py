@@ -14,7 +14,7 @@ root_dir = worker_dir.parent
 CONFIG_FILE = root_dir / "user_settings.json"
 
 DEFAULT_SETTINGS = {
-    "language": "fr",
+    "language": "en",
     "theme": "dark",
     "last_model": "llama3",
     "internet_access": False,

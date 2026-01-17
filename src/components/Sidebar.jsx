@@ -46,7 +46,8 @@ const Sidebar = ({ activeTab, setActiveTab, systemStats, isCollapsed, language }
       id: 'library',
       label: t.nav.library || (language === 'fr' ? 'BIBLIOTHEQUE' : 'LIBRARY'),
       icon: <Database size={18} />,
-      description: language === 'fr' ? 'Modeles a telecharger' : 'Models to download'
+      description: language === 'fr' ? 'Modeles a telecharger' : 'Models to download',
+      onboarding: 'library-link'
     },
     {
       id: 'security',
@@ -137,6 +138,7 @@ const Sidebar = ({ activeTab, setActiveTab, systemStats, isCollapsed, language }
             <button
               key={item.id}
               onClick={() => setActiveTab(item.id)}
+              data-onboarding={item.onboarding}
               className={`relative w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all duration-300 group overflow-hidden
                 ${isCollapsed ? 'justify-center' : ''} 
                 ${isActive
