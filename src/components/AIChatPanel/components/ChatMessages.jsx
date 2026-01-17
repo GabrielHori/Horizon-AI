@@ -47,10 +47,12 @@ export const ChatMessages = ({
         <div className="h-full flex flex-col items-center justify-center opacity-20 px-4">
           <Cpu size={48} className="sm:w-16 sm:h-16 mb-4 sm:mb-6 text-gray-500" />
           <h2 className="text-xl sm:text-2xl font-black uppercase italic tracking-[0.3em] sm:tracking-[0.5em] text-center">
-            {language === 'fr' ? 'Système Prêt' : 'System Ready'}
+            {language === 'fr' ? 'Systeme Pret' : 'System Ready'}
           </h2>
           <p className="text-xs sm:text-sm mt-2 opacity-60 text-center">
-            {activeModel || (language === 'fr' ? "Sélectionnez un modèle" : "Select a model")}
+            {activeModel
+              ? (language === 'fr' ? "Pret a vous aider" : "Ready to help")
+              : (language === 'fr' ? "Aucun style disponible" : "No style available")}
           </p>
         </div>
       ) : (
@@ -71,7 +73,6 @@ export const ChatMessages = ({
       {/* Indicateur de streaming amélioré */}
       <StreamingIndicator
         isTyping={isTyping}
-        activeModel={activeModel}
         language={language}
         currentPrompt={currentPrompt}
         onStop={onStop}

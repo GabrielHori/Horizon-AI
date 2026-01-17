@@ -49,12 +49,28 @@ impl<R: Runtime> PythonBridge<R> {
         // En mode BUILD: utilise le sidecar backend.exe compilé
         
         #[cfg(debug_assertions)]
-        let (mut rx_sidecar, mut child) = app
-            .shell()
-            .command("python")
-            .args(["../worker/main.py"]) 
-            .spawn()
-            .expect("Failed to spawn python worker. Check if python is in PATH.");
+        let (mut rx_sidecar, mut child) = {
+            #[cfg(windows)]
+            let primary_cmd = "pythonw";
+            #[cfg(not(windows))]
+            let primary_cmd = "python";
+
+            let spawn_primary = app
+                .shell()
+                .command(primary_cmd)
+                .args(["../worker/main.py"])
+                .spawn();
+
+            #[cfg(windows)]
+            let spawn_primary = spawn_primary.or_else(|_| {
+                app.shell()
+                    .command("python")
+                    .args(["../worker/main.py"])
+                    .spawn()
+            });
+
+            spawn_primary.expect("Failed to spawn python worker. Check if python is in PATH.")
+        };
         
         #[cfg(not(debug_assertions))]
         let (mut rx_sidecar, mut child) = app

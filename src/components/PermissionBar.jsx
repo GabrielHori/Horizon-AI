@@ -9,10 +9,11 @@
  * 
  * Style: Dark, Premium, Glass (Horizon AI)
  */
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { FileText, Edit, GitBranch, ShieldCheck, Shield } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { translations } from '../constants/translations';
+import PermissionService from '../services/permission_service';
 
 export const PermissionBar = ({ 
   activeProject, 
@@ -46,7 +47,36 @@ export const PermissionBar = ({
   ];
 
   // État sécurité : Toujours actif (mode sécurité par défaut)
-  const securityModeActive = true; // V2.1 : Mode sécurité toujours actif par défaut
+  const [securityModeActive, setSecurityModeActive] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadParano = async () => {
+      try {
+        const status = await PermissionService.getParanoMode();
+        if (isMounted) setSecurityModeActive(!!status);
+      } catch (error) {
+        if (isMounted) setSecurityModeActive(true);
+      }
+    };
+
+    const handleParanoUpdate = (event) => {
+      const enabled = event?.detail?.enabled;
+      if (typeof enabled === 'boolean') {
+        setSecurityModeActive(enabled);
+      } else {
+        loadParano();
+      }
+    };
+
+    loadParano();
+    window.addEventListener('parano-mode-updated', handleParanoUpdate);
+    return () => {
+      isMounted = false;
+      window.removeEventListener('parano-mode-updated', handleParanoUpdate);
+    };
+  }, []);
 
   return (
     <div className={`
@@ -100,16 +130,20 @@ export const PermissionBar = ({
           );
         })}
         
-        {/* Badge Mode Sécurité Actif (toujours visible) */}
+        {/* Badge Mode Sécurité (toujours visible) */}
         <div className={`
           ml-auto flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold
-          ${isDarkMode 
-            ? 'bg-green-500/20 text-green-400 border border-green-500/30' 
-            : 'bg-green-100 text-green-700 border border-green-300'
+          ${securityModeActive
+            ? (isDarkMode
+              ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+              : 'bg-green-100 text-green-700 border border-green-300')
+            : (isDarkMode
+              ? 'bg-white/10 text-white/60 border border-white/10'
+              : 'bg-slate-100 text-slate-600 border border-slate-200')
           }
         `}>
           <Shield size={12} />
-          <span>{t.securityModeActive || 'Security Mode Active'}</span>
+          <span>{securityModeActive ? (t.securityModeActive || 'Security Mode Active') : (t.securityModeInactive || 'Security Mode Off')}</span>
         </div>
       </div>
     </div>

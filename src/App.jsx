@@ -5,13 +5,22 @@ import OnboardingTour from './components/OnboardingTour';
 import TitleBar from './components/TitleBar';
 import TimeoutNotification from './components/TimeoutNotification';
 import { requestWorker } from './services/bridge';
+import { DEFAULT_STYLE_ID } from './constants/ai_styles';
 
 function App() {
   const [language, setLanguage] = useState('fr'); // Français par défaut
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState(() => {
+    if (typeof window === 'undefined') return 'dashboard';
+    const savedTab = window.localStorage.getItem('horizon.activeTab');
+    return savedTab || 'dashboard';
+  });
   const [showOllamaSetup, setShowOllamaSetup] = useState(true);
   const [selectedChatId, setSelectedChatId] = useState(null);
   const [selectedModel, setSelectedModel] = useState("");
+  const [selectedStyle, setSelectedStyle] = useState(DEFAULT_STYLE_ID);
+  const [modelOverride, setModelOverride] = useState(false);
+  const [chatIntent, setChatIntent] = useState(null);
+  const [prefillPrompt, setPrefillPrompt] = useState(null);
   const [isNavOpen, setIsNavOpen] = useState(true);
   const [userName, setUserName] = useState("Admin");
 
@@ -87,6 +96,11 @@ function App() {
     };
   }, []);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem('horizon.activeTab', activeTab);
+  }, [activeTab]);
+
   // Écran de setup Ollama au premier lancement
   if (showOllamaSetup) {
     return (
@@ -113,6 +127,14 @@ function App() {
           setSelectedChatId={setSelectedChatId}
           selectedModel={selectedModel}
           setSelectedModel={setSelectedModel}
+          selectedStyle={selectedStyle}
+          setSelectedStyle={setSelectedStyle}
+          modelOverride={modelOverride}
+          setModelOverride={setModelOverride}
+          chatIntent={chatIntent}
+          setChatIntent={setChatIntent}
+          prefillPrompt={prefillPrompt}
+          setPrefillPrompt={setPrefillPrompt}
           isNavOpen={isNavOpen}
           setIsNavOpen={setIsNavOpen}
           userName={userName}
@@ -124,7 +146,7 @@ function App() {
       </div>
 
       {/* Guide interactif au premier lancement */}
-      <OnboardingTour language={language} />
+      <OnboardingTour language={language} setActiveTab={setActiveTab} />
 
       {/* Notifications de timeout IPC (Tâche 2.2) */}
       <TimeoutNotification language={language} />

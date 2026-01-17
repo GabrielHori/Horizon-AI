@@ -101,6 +101,8 @@ class ChatHistoryService:
                     "model": data.get('model', None),
                     "projectId": data.get('projectId'),  # V2.1 : Lien projet
                     "created_at": data.get('created_at', ''),
+                    "updated_at": data.get('updated_at', ''),
+                    "message_count": len(data.get('messages', []) or []),
                     "encrypted": is_encrypted
                 })
             except Exception as e:
@@ -109,7 +111,7 @@ class ChatHistoryService:
                 continue
         
         # Trier par date de création (plus récent en premier)
-        return sorted(history, key=lambda x: x.get('created_at', ''), reverse=True)
+        return sorted(history, key=lambda x: x.get('updated_at') or x.get('created_at') or '', reverse=True)
 
     def get_messages(self, chat_id):
         """

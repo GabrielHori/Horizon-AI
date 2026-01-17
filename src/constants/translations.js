@@ -1,20 +1,29 @@
 export const translations = {
   en: {
     nav: {
-      dashboard: "DASHBOARD",
-      chat: "AI ASSISTANT",
-      files: "DATA EXPLORER",
+      dashboard: "HOME",
+      chat: "ASSISTANT",
+      library: "LIBRARY",
+      security: "SECURITY",
+      advanced: "ADVANCED CENTER",
+      files: "FILES",
       memory: "MEMORY",
       remote: "REMOTE ACCESS",
-      settings: "CONFIGURATION"
+      settings: "SETTINGS",
+      models: "MODELS"
     },
+
     topbar: {
-      root_access: "ROOT ACCESS",
-      model_select: "SELECT MODEL",
+      root_access: "LOCAL PROFILE",
+      style_select: "AI STYLE",
+      style_unavailable: "No styles available",
       ollama_online: "Ollama Online",
       offline: "Offline",
       checking: "Checking..."
     },
+
+
+
     // === NOUVEAU DASHBOARD ===
     dashboard: {
       systemReady: "System Ready",
@@ -59,6 +68,91 @@ export const translations = {
       modelFastLight: "Fast & light",
       modelBalanced: "Balanced",
       modelReasoning: "Reasoning"
+      ,
+      entryTitle: "What would you like to do?",
+      entrySubtitle: "Everything stays on this computer unless you say otherwise.",
+      intents: {
+        ask: {
+          title: "Ask a question",
+          desc: "A clear, direct answer.",
+          placeholder: "Ask your question..."
+        },
+        understand: {
+          title: "Understand a text",
+          desc: "Simple explanation, step by step.",
+          placeholder: "Paste a text to explain..."
+        },
+        write: {
+          title: "Writing help",
+          desc: "Rewrite, improve, or draft.",
+          placeholder: "Describe what you want to write..."
+        },
+        analyze: {
+          title: "Analyze a project",
+          desc: "Optional. For a local folder.",
+          placeholder: "Tell me what to analyze..."
+        }
+      },
+      secondary: {
+        resumeTitle: "Resume a conversation",
+        resumeDesc: "Find your recent chats",
+        securityTitle: "Security",
+        securityDesc: "Current mode",
+        advancedTitle: "Advanced center"
+      },
+      security: {
+        normal: "Normal",
+        max: "Maximum security"
+      },
+      footer: {
+        local: "Local assistant. No automatic sharing."
+      }
+    },
+
+    styles: {
+      quick: { label: "Fast", desc: "Short, direct answers." },
+      clear: { label: "Clear & simple", desc: "Explains without jargon." },
+      creative: { label: "Creative", desc: "Original ideas and examples." },
+      structured: { label: "Structured", desc: "Plans, steps, lists." },
+      precise: { label: "Precise", desc: "Careful details." }
+    },
+    labels: {
+      style: "Style",
+      intent: "Intent",
+      model: "Model"
+    },
+    securityCenter: {
+      title: "Security",
+      subtitle: "Clear, human approvals. Nothing happens without you.",
+      maximumTitle: "Maximum security",
+      maximumDesc: "Always ask before sensitive actions.",
+      enabled: "Enabled",
+      disabled: "Disabled",
+      confirmEnable: "Enable maximum security?",
+      confirmDisable: "Disable maximum security?",
+      remoteTitle: "Access from another device",
+      remoteDesc: "Optional. You stay in control.",
+      remoteAction: "Open access settings",
+      remoteOn: "On",
+      remoteOff: "Off",
+      historyTitle: "Local history",
+      historyDesc: "Stored on this device only.",
+      historyAction: "Manage"
+    },
+    advancedCenter: {
+      title: "Advanced Center",
+      subtitle: "Optional",
+      description: "Expert settings live here. You can ignore this screen.",
+      modelsTitle: "Internal models",
+      modelsDesc: "Manage installed models.",
+      filesTitle: "Files & context",
+      filesDesc: "Browse local files.",
+      memoryTitle: "Memory",
+      memoryDesc: "User and project memory.",
+      remoteTitle: "Remote access",
+      remoteDesc: "Access from another device.",
+      settingsTitle: "Settings",
+      settingsDesc: "Advanced configuration."
     },
     // === SETUP OLLAMA ===
     ollamaSetup: {
@@ -104,7 +198,7 @@ export const translations = {
     chat: {
       database: "Neural Archives",
       new_session: "Initialize Session",
-      input_placeholder: "ENTER A SYSTEM REQUEST...",
+      input_placeholder: "Tell me what you want to do...",
       execute: "Execute",
       active_flux: "Active Flux...",
       image_attached: "Image Attached",
@@ -127,10 +221,14 @@ export const translations = {
       interface_title: "INTERFACE & LANGUAGE",
       lang_label: "System Language",
       internet_label: "AI Internet Access",
+      gpuAcceleration: "GPU Acceleration",
+      gpuAcceleration_desc: "Use GPU for Ollama when available.",
       init_title: "INITIALIZATION",
       startup_label: "Run at Startup",
+      startup_desc: "Launch at system startup.",
       startup_sub: "Start with Windows",
       update_label: "Auto Updates",
+      update_desc: "Auto-update installed models.",
       update_sub: "Check AI Cores",
       identity_title: "OPERATOR IDENTITY",
       name_label: "System Display Name",
@@ -151,7 +249,7 @@ export const translations = {
       requestPermission: "Request Permission",
       learnMore: "Learn More",
       securityModeActive: "Security Mode Active",
-      paranoModeDescription: "Parano mode requires explicit permission for each action.",
+      paranoModeDescription: "Maximum security asks for approval on every sensitive action.",
       permissionRequiredFor: "This permission is required for",
       permissionDescriptions: {
         FileRead: "Reading files from the local filesystem",
@@ -183,25 +281,33 @@ export const translations = {
       repoAnalyze: "Analyze Repo",
       securityModeActive: "Security Mode Active",
       permissionGranted: "Granted",
-      permissionDenied: "Denied"
+      permissionDenied: "Denied",
+      securityModeInactive: "Security disabled"
     }
   },
   fr: {
-      nav: {
-        dashboard: "TABLEAU DE BORD",
-        chat: "ASSISTANT IA",
-        files: "EXPLORATEUR DATA",
-        memory: "MÉMOIRE",
-        remote: "REMOTE ACCESS",
-        settings: "CONFIGURATION"
+    nav: {
+      dashboard: "ACCUEIL",
+      chat: "ASSISTANT",
+      library: "BIBLIOTHEQUE",
+      security: "SECURITE",
+      advanced: "CENTRE AVANCE",
+      files: "FICHIERS",
+        memory: "MEMOIRE",
+        remote: "ACCES AUTRE APPAREIL",
+        settings: "PARAMETRES",
+        models: "MODELES"
       },
-    topbar: {
-      root_access: "ACCÈS ROOT",
-      model_select: "CHOISIR MODÈLE",
+
+        topbar: {
+      root_access: "PROFIL LOCAL",
+      style_select: "STYLE IA",
+      style_unavailable: "Aucun style disponible",
       ollama_online: "Ollama en ligne",
       offline: "Hors ligne",
-      checking: "Vérification..."
+      checking: "Verification..."
     },
+
     // === NOUVEAU DASHBOARD ===
     dashboard: {
       systemReady: "Système Prêt",
@@ -246,6 +352,91 @@ export const translations = {
       modelFastLight: "Rapide et léger",
       modelBalanced: "Équilibré",
       modelReasoning: "Raisonnement"
+      ,
+      entryTitle: "Que voulez-vous faire ?",
+      entrySubtitle: "Tout reste sur cet ordinateur, sauf si vous dites le contraire.",
+      intents: {
+        ask: {
+          title: "Poser une question",
+          desc: "Une reponse claire et directe.",
+          placeholder: "Posez votre question..."
+        },
+        understand: {
+          title: "Comprendre un texte",
+          desc: "Explication simple, etape par etape.",
+          placeholder: "Collez un texte a expliquer..."
+        },
+        write: {
+          title: "Aide a ecrire",
+          desc: "Reecrire, ameliorer, ou rediger.",
+          placeholder: "Decrivez ce que vous voulez ecrire..."
+        },
+        analyze: {
+          title: "Analyser un projet",
+          desc: "Optionnel. Pour un dossier local.",
+          placeholder: "Dites ce que vous voulez analyser..."
+        }
+      },
+      secondary: {
+        resumeTitle: "Reprendre une conversation",
+        resumeDesc: "Retrouvez vos derniers echanges",
+        securityTitle: "Securite",
+        securityDesc: "Mode actuel",
+        advancedTitle: "Centre avance"
+      },
+      security: {
+        normal: "Normal",
+        max: "Securite maximale"
+      },
+      footer: {
+        local: "Assistant local. Aucun partage automatique."
+      }
+    },
+
+    styles: {
+      quick: { label: "Rapide", desc: "Reponses courtes et directes." },
+      clear: { label: "Clair et simple", desc: "Explique sans jargon." },
+      creative: { label: "Creatif", desc: "Idees originales et exemples." },
+      structured: { label: "Structure", desc: "Plans, etapes, listes." },
+      precise: { label: "Precis", desc: "Details soignes." }
+    },
+    labels: {
+      style: "Style",
+      intent: "Intention",
+      model: "Modele"
+    },
+    securityCenter: {
+      title: "Securite",
+      subtitle: "Toujours demander. Rien ne se fait sans vous.",
+      maximumTitle: "Securite maximale",
+      maximumDesc: "Toujours demander avant une action sensible.",
+      enabled: "Active",
+      disabled: "Inactive",
+      confirmEnable: "Activer la securite maximale ?",
+      confirmDisable: "Desactiver la securite maximale ?",
+      remoteTitle: "Acces depuis un autre appareil",
+      remoteDesc: "Optionnel. Vous gardez le controle.",
+      remoteAction: "Ouvrir les reglages d'acces",
+      remoteOn: "On",
+      remoteOff: "Off",
+      historyTitle: "Historique local",
+      historyDesc: "Stocke uniquement sur cet ordinateur.",
+      historyAction: "Gerer"
+    },
+    advancedCenter: {
+      title: "Centre avance",
+      subtitle: "Optionnel",
+      description: "Les reglages experts sont ici. Vous pouvez ignorer cet ecran.",
+      modelsTitle: "Modeles internes",
+      modelsDesc: "Gerer les modeles installes.",
+      filesTitle: "Fichiers et contexte",
+      filesDesc: "Parcourir les fichiers locaux.",
+      memoryTitle: "Memoire",
+      memoryDesc: "Memoire utilisateur et projet.",
+      remoteTitle: "Acces distant",
+      remoteDesc: "Acces depuis un autre appareil.",
+      settingsTitle: "Parametres",
+      settingsDesc: "Configuration avancee."
     },
     // === SETUP OLLAMA ===
     ollamaSetup: {
@@ -314,10 +505,14 @@ export const translations = {
       interface_title: "INTERFACE & LANGUE",
       lang_label: "Langue du système",
       internet_label: "Accès Internet IA",
+      gpuAcceleration: "Acceleration GPU",
+      gpuAcceleration_desc: "Utiliser le GPU pour Ollama quand disponible.",
       init_title: "INITIALISATION",
       startup_label: "Lancement au démarrage",
+      startup_desc: "Lancer au demarrage du systeme.",
       startup_sub: "Démarrer avec Windows",
       update_label: "Mises à jour Auto",
+      update_desc: "Mettre a jour automatiquement les modeles installes.",
       update_sub: "Vérifier les Noyaux IA",
       identity_title: "IDENTITÉ DE L'OPÉRATEUR",
       name_label: "Nom d'affichage système",
@@ -338,7 +533,7 @@ export const translations = {
       requestPermission: "Demander Permission",
       learnMore: "En Savoir Plus",
       securityModeActive: "Mode Sécurité Actif",
-      paranoModeDescription: "Le mode parano exige une permission explicite pour chaque action.",
+      paranoModeDescription: "La securite maximale demande votre accord pour chaque action sensible.",
       permissionRequiredFor: "Cette permission est requise pour",
       permissionDescriptions: {
         FileRead: "Lire des fichiers depuis le système de fichiers local",
@@ -370,7 +565,8 @@ export const translations = {
       repoAnalyze: "Analyser Repo",
       securityModeActive: "Mode Sécurité Actif",
       permissionGranted: "Accordée",
-      permissionDenied: "Refusée"
+      permissionDenied: "Refusée",
+      securityModeInactive: "Securite desactivee"
     }
   }
 };

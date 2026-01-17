@@ -8,7 +8,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { requestWorker, setupStreamListener } from '../services/bridge';
 import { translations } from '../constants/translations';
 
-const FileManager = ({ language = 'fr' }) => {
+const ModelManager = ({ language = 'fr' }) => {
   const { isDarkMode } = useTheme();
   const t = translations[language]?.files || translations.en.files;
 
@@ -19,7 +19,8 @@ const FileManager = ({ language = 'fr' }) => {
   const [showConfirm, setShowConfirm] = useState(false);
   const [modelToConfirm, setModelToConfirm] = useState(null);
   const [viewMode, setViewMode] = useState('grid'); // 'grid' ou 'list'
-  
+  const [error, setError] = useState(null);
+
   // Download state
   const [downloadingModel, setDownloadingModel] = useState(null);
   const [downloadProgress, setDownloadProgress] = useState(0);
@@ -54,11 +55,11 @@ const FileManager = ({ language = 'fr' }) => {
 
   useEffect(() => {
     fetchModels();
-    
+
     const handleModelsUpdate = () => {
       fetchModels();
     };
-    
+
     window.addEventListener("models-updated", handleModelsUpdate);
     return () => window.removeEventListener("models-updated", handleModelsUpdate);
   }, []);
@@ -71,7 +72,7 @@ const FileManager = ({ language = 'fr' }) => {
     const setupListener = async () => {
       unlisten = await setupStreamListener((payload) => {
         if (!isMounted) return;
-        
+
         if (payload.model) {
           if (payload.event === "progress") {
             setDownloadProgress(payload.progress || 0);
@@ -114,9 +115,10 @@ const FileManager = ({ language = 'fr' }) => {
       window.dispatchEvent(new Event("models-updated"));
       setShowConfirm(false);
       setModelToConfirm(null);
+      setError(null);
     } catch (err) {
       console.error("[FileManager] delete_model error:", err);
-      alert(language === 'fr' ? "Impossible de supprimer le modèle." : "Unable to delete the model.");
+      setError(language === 'fr' ? "Impossible de supprimer le modele." : "Unable to delete the model.");
     } finally {
       setIsDeleting(false);
     }
@@ -129,7 +131,7 @@ const FileManager = ({ language = 'fr' }) => {
     if (!modelName || downloadingModel) return;
     setDownloadingModel(modelName);
     setDownloadProgress(0);
-    
+
     try {
       await requestWorker("pull", { model: modelName });
     } catch (error) {
@@ -164,9 +166,8 @@ const FileManager = ({ language = 'fr' }) => {
       {/* CONFIRM MODAL */}
       {showConfirm && (
         <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/60 backdrop-blur-lg">
-          <div className={`p-8 max-w-md w-full rounded-[32px] border ${
-            isDarkMode ? 'bg-zinc-900 border-white/10 text-white' : 'bg-white border-black/10'
-          }`}>
+          <div className={`p-8 max-w-md w-full rounded-[32px] border ${isDarkMode ? 'bg-zinc-900 border-white/10 text-white' : 'bg-white border-black/10'
+            }`}>
             <div className="text-center">
               <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-red-500/10 flex items-center justify-center">
                 <AlertTriangle size={40} className="text-red-500" />
@@ -192,7 +193,7 @@ const FileManager = ({ language = 'fr' }) => {
                   disabled={isDeleting}
                   className="py-4 rounded-2xl bg-red-600 text-white font-black uppercase text-xs disabled:opacity-50 hover:bg-red-500 transition-all hover:scale-[1.02]"
                 >
-                  {isDeleting ? <Loader2 className="animate-spin mx-auto" size={16}/> : t.confirm}
+                  {isDeleting ? <Loader2 className="animate-spin mx-auto" size={16} /> : t.confirm}
                 </button>
               </div>
             </div>
@@ -203,7 +204,7 @@ const FileManager = ({ language = 'fr' }) => {
       {/* HEADER */}
       <div className="mb-10">
         <div className="flex items-center gap-3 mb-2">
-          <div 
+          <div
             className="h-1 w-12 rounded-full"
             style={{
               background: 'linear-gradient(90deg, rgba(255,100,100,0.8), rgba(255,200,50,0.8), rgba(100,255,100,0.8), rgba(100,200,255,0.8))'
@@ -238,20 +239,36 @@ const FileManager = ({ language = 'fr' }) => {
         </div>
       </div>
 
+
+
+      {error && (
+        <div className={`mb-6 p-4 rounded-2xl border flex items-center justify-between gap-4 ${isDarkMode ? 'bg-red-500/10 border-red-500/30 text-red-400' : 'bg-red-50 border-red-200 text-red-600'}`}>
+          <div className="flex items-center gap-3">
+            <AlertTriangle size={18} />
+            <span className="text-xs font-bold uppercase tracking-widest">{error}</span>
+          </div>
+          <button
+            onClick={() => setError(null)}
+            className={`px-3 py-1 rounded-xl text-[9px] font-black uppercase tracking-widest ${isDarkMode ? 'bg-white/10 text-white/70' : 'bg-white text-red-600 border border-red-200'}`}
+          >
+            {language === 'fr' ? 'Fermer' : 'Close'}
+          </button>
+        </div>
+      )}
       {/* SEARCH & ACTIONS BAR */}
       <div className="flex flex-col md:flex-row gap-4 mb-8">
         {/* Search */}
         <div className={`flex-1 flex items-center gap-4 px-6 py-4 rounded-2xl border
           ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-white border-slate-200 shadow-sm'}
         `}>
-          <Search size={20} className="opacity-30"/>
+          <Search size={20} className="opacity-30" />
           <input
             className="flex-1 bg-transparent outline-none font-medium"
             placeholder={t.filter_placeholder}
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
           />
-          <button 
+          <button
             onClick={fetchModels}
             className="p-2 rounded-xl hover:bg-white/10 transition-colors"
           >
@@ -299,7 +316,7 @@ const FileManager = ({ language = 'fr' }) => {
             <span className={`text-sm font-mono font-bold ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>{downloadProgress}%</span>
           </div>
           <div className="w-full h-2 rounded-full bg-white/10 overflow-hidden">
-            <div 
+            <div
               className="h-full bg-gradient-to-r from-gray-400 to-gray-500 transition-all duration-300"
               style={{ width: `${downloadProgress}%` }}
             />
@@ -319,11 +336,11 @@ const FileManager = ({ language = 'fr' }) => {
             {t.no_models}
           </h3>
           <p className="text-sm opacity-30 mb-6">
-            {language === 'fr' 
+            {language === 'fr'
               ? "Téléchargez votre premier modèle pour commencer"
               : "Download your first model to get started"}
           </p>
-          
+
           {/* Quick Download Suggestions */}
           <div className="flex flex-wrap justify-center gap-3">
             {['llama3.2:3b', 'mistral', 'deepseek-r1:7b'].map(model => (
@@ -376,8 +393,8 @@ const ModelCard = ({ model, icon, onDelete, isDarkMode, language, t }) => {
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       className={`relative p-6 rounded-[24px] border transition-all duration-300 group
-        ${isDarkMode 
-          ? 'bg-white/5 border-white/10 hover:border-gray-500/50 hover:bg-gray-500/5' 
+        ${isDarkMode
+          ? 'bg-white/5 border-white/10 hover:border-gray-500/50 hover:bg-gray-500/5'
           : 'bg-white border-slate-200 shadow-sm hover:shadow-lg hover:border-gray-300'}
         ${isHovered ? 'scale-[1.02]' : ''}
       `}
@@ -419,8 +436,8 @@ const ModelCard = ({ model, icon, onDelete, isDarkMode, language, t }) => {
       <button
         onClick={onDelete}
         className={`w-full py-3 rounded-xl border text-xs font-black uppercase tracking-wider transition-all
-          ${isDarkMode 
-            ? 'border-white/10 text-white/50 hover:border-red-500/50 hover:text-red-400 hover:bg-red-500/10' 
+          ${isDarkMode
+            ? 'border-white/10 text-white/50 hover:border-red-500/50 hover:text-red-400 hover:bg-red-500/10'
             : 'border-slate-200 text-slate-400 hover:border-red-400 hover:text-red-500 hover:bg-red-50'}
         `}
       >
@@ -433,4 +450,4 @@ const ModelCard = ({ model, icon, onDelete, isDarkMode, language, t }) => {
   );
 };
 
-export default FileManager;
+export default ModelManager;

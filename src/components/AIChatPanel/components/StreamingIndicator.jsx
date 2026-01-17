@@ -8,7 +8,6 @@ import { useTheme } from '../../../contexts/ThemeContext';
 
 export const StreamingIndicator = ({
   isTyping,
-  activeModel,
   language,
   currentPrompt,
   onStop,
@@ -29,9 +28,8 @@ export const StreamingIndicator = ({
         </div>
         <div>
           <span className="text-xs font-bold block">
-            {language === 'fr' ? 'L\'IA écrit...' : 'AI is typing...'}
+            {language === 'fr' ? 'L\'IA ecrit...' : 'AI is typing...'}
           </span>
-          <span className="text-[9px] opacity-50">{activeModel}</span>
         </div>
       </div>
 
@@ -41,9 +39,9 @@ export const StreamingIndicator = ({
           <button
             onClick={onViewPrompt}
             className="p-2 rounded-xl bg-blue-500/10 text-blue-400 hover:bg-blue-500 hover:text-white transition-all"
-            title={language === 'fr' ? 'Voir le prompt' : 'View prompt'}
+            title={language === 'fr' ? 'Voir les details' : 'View details'}
           >
-            📋
+            Details
           </button>
         )}
 
@@ -51,7 +49,7 @@ export const StreamingIndicator = ({
         <button
           onClick={onStop}
           className="p-2 rounded-xl bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white transition-all"
-          title={language === 'fr' ? 'Arrêter' : 'Stop'}
+          title={language === 'fr' ? 'Arreter' : 'Stop'}
         >
           <StopCircle size={16} />
         </button>

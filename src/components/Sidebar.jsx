@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { Zap, LayoutDashboard, MessageSquare, Files, Settings, Cpu, ShieldCheck, HardDrive, Brain, Globe } from 'lucide-react';
+import React from 'react';
+import { Zap, LayoutDashboard, MessageSquare, ShieldCheck, Settings, Cpu, HardDrive, Database } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { translations } from '../constants/translations';
-import { requestWorker } from '../services/bridge';
 import AnimatedInteractiveButton from './AnimatedInteractiveButton';
 
 /**
@@ -16,31 +15,6 @@ import AnimatedInteractiveButton from './AnimatedInteractiveButton';
 const Sidebar = ({ activeTab, setActiveTab, systemStats, isCollapsed, language }) => {
   const { isDarkMode } = useTheme();
   const t = translations[language] || translations.en;
-
-  // État Remote Access (pour badge ON/OFF)
-  const [remoteStatus, setRemoteStatus] = useState(null);
-
-  // Charger le statut Remote Access au montage et périodiquement
-  useEffect(() => {
-    const loadRemoteStatus = async () => {
-      try {
-        const status = await requestWorker("tunnel_get_status");
-        setRemoteStatus(status);
-      } catch (error) {
-        console.error("Error loading remote status:", error);
-        setRemoteStatus(null);
-      }
-    };
-
-    loadRemoteStatus();
-
-    // Rafraîchir le statut toutes les 5 secondes si tunnel actif
-    const interval = setInterval(() => {
-      loadRemoteStatus();
-    }, 5000);
-
-    return () => clearInterval(interval);
-  }, []);
 
   // Extraction sécurisée des stats
   const getVal = (s) => {
@@ -60,48 +34,31 @@ const Sidebar = ({ activeTab, setActiveTab, systemStats, isCollapsed, language }
       id: 'dashboard',
       label: t.nav.dashboard,
       icon: <LayoutDashboard size={18} />,
-      description: 'Vue d\'ensemble, stats système, modèles Ollama'
+      description: language === 'fr' ? "Point d'entree simple" : 'Simple entry point'
     },
     {
       id: 'chat',
-      label: t.nav.chat, // "AI ASSISTANT" dans traductions
+      label: t.nav.chat,
       icon: <MessageSquare size={18} />,
-      description: 'Chat avec IA, projets, conversations, contexte'
+      description: language === 'fr' ? 'Assistant personnel' : 'Personal assistant'
     },
     {
-      id: 'files',
-      label: t.nav.files, // "DATA EXPLORER" dans traductions
-      icon: <Files size={18} />,
-      description: 'Explorer fichiers, contexte local, preview'
+      id: 'library',
+      label: t.nav.library || (language === 'fr' ? 'BIBLIOTHEQUE' : 'LIBRARY'),
+      icon: <Database size={18} />,
+      description: language === 'fr' ? 'Modeles a telecharger' : 'Models to download'
     },
     {
-      id: 'memory',
-      label: t.nav.memory || 'Memory',
-      icon: <Brain size={18} />,
-      description: 'Mémoire utilisateur, projet, session'
+      id: 'security',
+      label: t.nav.security || (language === 'fr' ? 'SECURITE' : 'SECURITY'),
+      icon: <ShieldCheck size={18} />,
+      description: language === 'fr' ? 'Toujours demander avant une action sensible' : 'Ask before sensitive actions'
     },
     {
-      id: 'remote', // NOUVEAU : Remote Access
-      label: t.nav.remote || (language === 'fr' ? 'REMOTE ACCESS' : 'REMOTE ACCESS'),
-      icon: <Globe size={18} />,
-      description: 'Accès distant sécurisé, sessions actives',
-      badge: remoteStatus?.tunnel_running ? (
-        <span className={`text-[8px] px-1.5 py-0.5 rounded-full font-black uppercase ${isDarkMode ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-emerald-100 text-emerald-700 border border-emerald-200'
-          }`}>
-          ON
-        </span>
-      ) : (
-        <span className={`text-[8px] px-1.5 py-0.5 rounded-full font-black uppercase ${isDarkMode ? 'bg-gray-500/20 text-gray-400 border border-gray-500/30' : 'bg-gray-100 text-gray-500 border border-gray-200'
-          }`}>
-          OFF
-        </span>
-      )
-    },
-    {
-      id: 'settings',
-      label: t.nav.settings, // "CONFIGURATION" dans traductions
+      id: 'advanced',
+      label: t.nav.advanced || (language === 'fr' ? 'CENTRE AVANCE' : 'ADVANCED CENTER'),
       icon: <Settings size={18} />,
-      description: 'Paramètres, sécurité, préférences'
+      description: language === 'fr' ? 'Options expertes (optionnel)' : 'Expert options (optional)'
     }
   ];
 
@@ -262,6 +219,7 @@ const Sidebar = ({ activeTab, setActiveTab, systemStats, isCollapsed, language }
           );
         })}
       </nav>
+
 
       {/* SYSTEM STATS - Jauges métalliques */}
       <div className="px-4 mt-auto pt-6">

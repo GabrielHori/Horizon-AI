@@ -33,6 +33,19 @@ class SystemService:
             
         self.shortcut_path = self.startup_folder / "HorizonAI_Worker.bat"
 
+    def apply_ollama_env(self, settings: Dict[str, Any]) -> None:
+        """Applique les variables d'environnement Ollama selon les parametres."""
+        models_path = settings.get("ollama_models_path") or ""
+        if models_path:
+            os.environ["OLLAMA_MODELS"] = models_path
+        else:
+            os.environ.pop("OLLAMA_MODELS", None)
+
+        if settings.get("gpuAcceleration", True):
+            os.environ.pop("OLLAMA_NO_GPU", None)
+        else:
+            os.environ["OLLAMA_NO_GPU"] = "1"
+
     def manage_startup(self, enable: bool) -> Dict[str, str]:
         """Active ou désactive le lancement du worker au démarrage de Windows."""
         try:
@@ -82,6 +95,7 @@ class SystemService:
             "userName": "Horizon",
             "language": "en",
             "internetAccess": False,
+            "gpuAcceleration": True,
             "runAtStartup": False,
             "autoUpdate": True,
             "ollama_models_path": ""
@@ -92,7 +106,10 @@ class SystemService:
                 with open(self.settings_file, 'r', encoding='utf-8') as f:
                     saved_settings = json.load(f)
                     # Fusionner avec les valeurs par défaut (pour les nouvelles clés)
-                    return {**default_settings, **saved_settings}
+                    merged = {**default_settings, **saved_settings}
+                    self.apply_ollama_env(merged)
+                    return merged
+            self.apply_ollama_env(default_settings)
             return default_settings
         except Exception as e:
             print(f"[SystemService] Error loading settings: {e}", file=sys.stderr)
@@ -103,6 +120,8 @@ class SystemService:
         try:
             with open(self.settings_file, 'w', encoding='utf-8') as f:
                 json.dump(settings, f, indent=4, ensure_ascii=False)
+
+            self.apply_ollama_env(settings)
             
             # Si runAtStartup a changé, mettre à jour le raccourci
             if "runAtStartup" in settings:

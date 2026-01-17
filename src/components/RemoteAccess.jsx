@@ -32,6 +32,8 @@ import {
   EyeOff
 } from 'lucide-react';
 import { requestWorker } from '../services/bridge';
+import { handleError as handleErrorService, executeWithErrorHandling, createUserFriendlyError } from '../services/error_service';
+import PermissionService from '../services/permission_service';
 
 // Import hooks
 import { useTunnelStatus } from './RemoteAccess/hooks/useTunnelStatus';
@@ -59,9 +61,23 @@ export default function RemoteAccess({ language = 'fr', isDarkMode = true }) {
   // Get translations
   const text = translations[language] || translations.en;
 
+  const ensureRemoteAccessPermission = useCallback(async (actionLabel) => {
+    const hasPermission = await PermissionService.hasPermission('RemoteAccess');
+    if (hasPermission) {
+      return true;
+    }
+    const result = await PermissionService.requestPermission(
+      'RemoteAccess',
+      actionLabel,
+      language === 'fr' ? 'Acces distant' : 'Remote access'
+    );
+    return result === true;
+  }, [language]);
+
+
   // Hooks initialization
   const { status, loading, loadStatus, setError: setStatusError } = useTunnelStatus();
-  const { installProgress, installCloudflared } = useCloudflaredInstall(installing, setInstalling, loadStatus);
+  const { installProgress, installCloudflared } = useCloudflaredInstall(installing, setInstalling, loadStatus, language);
   const {
     currentToken,
     showToken,
@@ -80,9 +96,11 @@ export default function RemoteAccess({ language = 'fr', isDarkMode = true }) {
   // Handle errors from hooks
   const handleError = useCallback((err) => {
     console.error("RemoteAccess error:", err);
-    setError(err.message);
-    setStatusError(err.message);
-  }, [setStatusError]);
+    // Utiliser le service de gestion d'erreurs pour créer un message utilisateur convivial
+    const userError = createUserFriendlyError(err, 'Remote Access', language);
+    setError(userError.userMessage);
+    setStatusError(userError.userMessage);
+  }, [setStatusError, language]);
 
   // Toggle tunnel
   const toggleTunnel = async () => {
@@ -90,22 +108,53 @@ export default function RemoteAccess({ language = 'fr', isDarkMode = true }) {
     setError(null);
 
     try {
+      const allowed = await ensureRemoteAccessPermission(
+        status?.tunnel_running
+          ? (language === 'fr' ? 'Desactiver le tunnel' : 'Disable tunnel')
+          : (language === 'fr' ? 'Activer le tunnel' : 'Enable tunnel')
+      );
+      if (!allowed) {
+        setError(language === 'fr' ? 'Permission RemoteAccess requise' : 'RemoteAccess permission required');
+        setToggling(false);
+        return;
+      }
       if (status?.tunnel_running) {
-        await requestWorker("tunnel_stop");
+        const stopResult = await requestWorker("tunnel_stop");
+        if (stopResult?.error === true) {
+          handleError(stopResult);
+          setToggling(false);
+          return;
+        }
       } else {
         // Check if token exists, generate if needed
         if (!status?.token_configured) {
-          await generateToken();
+          const tokenResult = await generateToken();
+          if (tokenResult?.error === true) {
+            handleError(tokenResult);
+            setToggling(false);
+            return;
+          }
         }
 
-        const result = await requestWorker("tunnel_start");
-        if (!result?.success) {
-          setError(result?.error || text.errorStarting);
+        const startResult = await requestWorker("tunnel_start");
+        if (startResult?.error === true) {
+          handleError(startResult);
+          setToggling(false);
+          return;
+        }
+
+        if (!startResult?.success) {
+          setError(startResult?.error || text.errorStarting);
+          setToggling(false);
+          return;
         }
       }
 
       // Reload status
-      await loadStatus();
+      const statusResult = await loadStatus();
+      if (statusResult?.error === true) {
+        handleError(statusResult);
+      }
     } catch (err) {
       handleError(err);
     } finally {
@@ -118,7 +167,24 @@ export default function RemoteAccess({ language = 'fr', isDarkMode = true }) {
     if (!newIp.trim()) return;
 
     try {
-      await requestWorker("tunnel_add_allowed_ip", { ip: newIp.trim() });
+      const allowed = await ensureRemoteAccessPermission(
+        language === 'fr' ? 'Ajouter une IP a la liste blanche' : 'Add IP to allowlist'
+      );
+      if (!allowed) {
+        setError(language === 'fr' ? 'Permission RemoteAccess requise' : 'RemoteAccess permission required');
+        return;
+      }
+      const result = await requestWorker("tunnel_add_allowed_ip", { ip: newIp.trim() });
+      if (result?.error === true) {
+        handleError(result);
+        return;
+      }
+
+      if (!result?.success) {
+        setError(result?.error || (language === 'fr' ? 'Échec de l\'ajout de l\'IP' : 'Failed to add IP'));
+        return;
+      }
+
       setNewIp('');
       await loadStatus();
     } catch (err) {
@@ -129,7 +195,24 @@ export default function RemoteAccess({ language = 'fr', isDarkMode = true }) {
   // Remove IP from allowlist
   const removeAllowedIp = async (ip) => {
     try {
-      await requestWorker("tunnel_remove_allowed_ip", { ip });
+      const allowed = await ensureRemoteAccessPermission(
+        language === 'fr' ? 'Retirer une IP de la liste blanche' : 'Remove IP from allowlist'
+      );
+      if (!allowed) {
+        setError(language === 'fr' ? 'Permission RemoteAccess requise' : 'RemoteAccess permission required');
+        return;
+      }
+      const result = await requestWorker("tunnel_remove_allowed_ip", { ip });
+      if (result?.error === true) {
+        handleError(result);
+        return;
+      }
+
+      if (!result?.success) {
+        setError(result?.error || (language === 'fr' ? 'Échec de la suppression de l\'IP' : 'Failed to remove IP'));
+        return;
+      }
+
       await loadStatus();
     } catch (err) {
       handleError(err);

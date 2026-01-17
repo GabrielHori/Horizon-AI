@@ -3,7 +3,7 @@
  * Style: Dark, Premium, Glass (Horizon AI)
  */
 import React from 'react';
-import { ImageIcon, GitBranch, Loader2, X } from 'lucide-react';
+import { Globe, ImageIcon, GitBranch, Loader2, X } from 'lucide-react';
 import { useTheme } from '../../../contexts/ThemeContext';
 import { RepositoryBadge } from './RepositoryBadge';
 import { translations } from '../../../constants/translations';
@@ -19,6 +19,9 @@ export const ChatInput = ({
   selectedRepo,
   analyzingRepo,
   repoAnalysis,
+  useWeb,
+  webAvailable,
+  onToggleWeb,
   fileInputRef,
   inputRef,
   onImageSelect,
@@ -26,7 +29,8 @@ export const ChatInput = ({
   onSelectRepo,
   onRemoveRepo,
   onSubmit,
-  t
+  t,
+  intentPlaceholder
 }) => {
   const { isDarkMode } = useTheme();
   const chatTranslations = translations[language]?.chat || translations.en.chat;
@@ -62,6 +66,7 @@ export const ChatInput = ({
       {/* Barre d'input Mercury */}
       <form
         onSubmit={onSubmit}
+        data-onboarding="chat-input"
         className={`relative max-w-4xl mx-auto overflow-hidden rounded-[28px] transition-all duration-500 ${isTyping ? 'opacity-70' : ''}`}
         style={{
           background: isDarkMode
@@ -144,6 +149,26 @@ export const ChatInput = ({
             )}
           </button>
 
+          {/* Bouton Recherche Web */}
+          <button
+            type="button"
+            onClick={onToggleWeb}
+            disabled={isTyping || !webAvailable}
+            className={`relative p-3 sm:p-4 rounded-2xl transition-all duration-300 disabled:opacity-20 overflow-hidden group flex-shrink-0 ${useWeb && webAvailable
+              ? 'text-emerald-400 hover:text-emerald-300'
+              : 'text-white/30 hover:text-gray-300'
+              }`}
+            title={webAvailable
+              ? (language === 'fr' ? 'Recherche web' : 'Web search')
+              : (language === 'fr' ? 'Recherche web indisponible' : 'Web search unavailable')}
+          >
+            <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity bg-white/[0.03]" />
+            <Globe size={18} className="sm:w-5 sm:h-5 relative z-10" />
+            {useWeb && webAvailable && (
+              <div className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-emerald-500 border border-white/20" />
+            )}
+          </button>
+
           {/* Input principal */}
           <input
             ref={inputRef}
@@ -152,8 +177,8 @@ export const ChatInput = ({
             placeholder={isTyping
               ? (language === 'fr' ? 'Patientez...' : 'Please wait...')
               : (!activeModel
-                ? (language === 'fr' ? 'Sélectionnez un modèle...' : 'Select a model...')
-                : chatTranslations.input_placeholder)}
+                ? (language === 'fr' ? 'Aucun style disponible' : 'No style available')
+                : (intentPlaceholder || chatTranslations.input_placeholder))}
             disabled={isTyping || !activeModel}
             className="flex-1 bg-transparent px-3 sm:px-4 py-3 sm:py-4 text-xs sm:text-sm font-medium outline-none disabled:cursor-not-allowed text-white/90 placeholder:text-white/20"
           />
@@ -193,7 +218,9 @@ export const ChatInput = ({
       {/* Message d'aide si pas de modèle */}
       {!activeModel && (
         <p className="text-center text-[10px] text-white/30 mt-4 font-medium tracking-wide">
-          {language === 'fr' ? '↑ Sélectionnez un modèle pour commencer' : '↑ Select a model to start'}
+          {language === 'fr'
+            ? 'Aucun style disponible. Ouvrez le Centre avance pour installer.'
+            : 'No style available. Open the Advanced Center to install.'}
         </p>
       )}
     </div>

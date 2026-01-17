@@ -38,6 +38,66 @@ def start_ollama_background():
         print(f"Impossible de démarrer Ollama: {e}", file=sys.stderr)
 
 
+def load_runtime_settings():
+    try:
+        from services.system_service import system_service
+        return system_service.load_settings()
+    except Exception as e:
+        print(f"[Settings] Failed to load settings: {e}", file=sys.stderr)
+        return {}
+
+
+def auto_update_models(settings):
+    if not settings.get("autoUpdate"):
+        return
+    if not settings.get("internetAccess"):
+        return
+
+    def _run():
+        import subprocess
+        time.sleep(5)
+        try:
+            creation_flags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+            result = subprocess.run(
+                ["ollama", "list"],
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="ignore",
+                creationflags=creation_flags,
+                timeout=20
+            )
+            if result.returncode != 0:
+                print(f"[AutoUpdate] ollama list failed: {result.stderr}", file=sys.stderr)
+                return
+
+            lines = result.stdout.strip().split("\n")
+            if not lines:
+                return
+
+            start_index = 0
+            if "NAME" in lines[0].upper() and "ID" in lines[0].upper():
+                start_index = 1
+
+            models = []
+            for line in lines[start_index:]:
+                parts = line.split()
+                if parts:
+                    models.append(parts[0])
+
+            for model in models:
+                subprocess.run(
+                    ["ollama", "pull", model],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    creationflags=creation_flags
+                )
+        except Exception as e:
+            print(f"[AutoUpdate] Failed: {e}", file=sys.stderr)
+
+    threading.Thread(target=_run, daemon=True).start()
+
+
 class Worker:
     def __init__(self):
         self.ipc = IpcHandler(sys.stdin, sys.stdout)
@@ -84,10 +144,14 @@ class Worker:
     def run(self):
         print("🚀 HorizonAI Worker started", file=sys.stderr)
 
+        settings = load_runtime_settings()
+
         threading.Thread(
             target=start_ollama_background,
             daemon=True
         ).start()
+
+        auto_update_models(settings)
 
         threading.Thread(
             target=self._monitor_loop,

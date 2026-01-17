@@ -1,7 +1,8 @@
 use tauri::{State, Wry};
 use std::sync::Mutex;
 use std::path::PathBuf;
-use crate::permission_manager::{PermissionManager, Permission, PermissionLog, PermissionScope};
+use serde_json;
+use crate::permission_manager::{PermissionManager, Permission, PermissionScope};
 
 fn parse_permission(permission: &str) -> Result<Permission, String> {
     match permission {
@@ -23,16 +24,24 @@ pub async fn request_permission(
     permission: String,
     context: String,
     _reason: String,
-) -> Result<bool, String> {
+) -> Result<serde_json::Value, String> {
     // V2.1 Phase 3 : Utiliser request_permission_with_scope avec scope Global
-    request_permission_with_scope(
+    match request_permission_with_scope(
         state,
         permission,
-        context,
+        context.clone(),
         "global".to_string(),  // Scope par défaut = Global
         None,  // duration_minutes (non utilisé pour Global)
         None,  // project_id (non utilisé pour Global)
-    ).await
+    ).await {
+        Ok(result) => Ok(result),
+        Err(err) => Ok(serde_json::json!({
+            "error": true,
+            "code": "PERMISSION_REQUEST_ERROR",
+            "message": err,
+            "context": context
+        })),
+    }
 }
 
 /// V2.1 Phase 3 : Commande avec support scope (temporaire/session/project)
@@ -44,8 +53,20 @@ pub async fn request_permission_with_scope(
     scope: String,  // "temporary", "session", "project", "global"
     duration_minutes: Option<i64>,  // Pour scope "temporary"
     project_id: Option<String>,  // Pour scope "project"
-) -> Result<bool, String> {
-    let permission_enum = parse_permission(&permission)?;
+) -> Result<serde_json::Value, String> {
+    // Parse permission
+    let permission_enum = match parse_permission(&permission) {
+        Ok(perm) => perm,
+        Err(err) => {
+            return Ok(serde_json::json!({
+                "error": true,
+                "code": "INVALID_PERMISSION",
+                "message": err,
+                "permission": permission,
+                "context": context
+            }));
+        }
+    };
 
     // Parser le scope (cloner project_id si nécessaire)
     let project_id_for_scope = project_id.clone();
@@ -63,8 +84,18 @@ pub async fn request_permission_with_scope(
     };
 
     // 🔒 lock court
-    let (log, async_handle) = {
-        let mut manager = state.lock().map_err(|e| e.to_string())?;
+    let result = {
+        let mut manager = match state.lock() {
+            Ok(guard) => guard,
+            Err(e) => {
+                return Ok(serde_json::json!({
+                    "error": true,
+                    "code": "MUTEX_LOCK_ERROR",
+                    "message": format!("Failed to acquire lock: {}", e),
+                    "context": context
+                }));
+            }
+        };
 
         // Nettoyer les permissions expirées avant d'ajouter une nouvelle
         manager.cleanup_expired_permissions();
@@ -85,21 +116,61 @@ pub async fn request_permission_with_scope(
     };
 
     // 🔓 mutex libéré ici
-    async_handle.write_log(log).await?;
-
-    Ok(true)
+    match result.1.write_log(result.0).await {
+        Ok(_) => Ok(serde_json::json!({
+            "success": true,
+            "permission": permission,
+            "scope": scope,
+            "project_id": project_id,
+            "context": context
+        })),
+        Err(err) => Ok(serde_json::json!({
+            "error": true,
+            "code": "LOG_WRITE_ERROR",
+            "message": format!("Failed to write permission log: {}", err),
+            "context": context
+        })),
+    }
 }
 
 #[tauri::command]
 pub async fn has_permission(
     state: State<'_, Mutex<PermissionManager<Wry>>>,
     permission: String,
-) -> Result<bool, String> {
-    let permission_enum = parse_permission(&permission)?;
+) -> Result<serde_json::Value, String> {
+    let permission_enum = match parse_permission(&permission) {
+        Ok(perm) => perm,
+        Err(err) => {
+            return Ok(serde_json::json!({
+                "error": true,
+                "code": "INVALID_PERMISSION",
+                "message": err,
+                "permission": permission
+            }));
+        }
+    };
+
+    let mut manager = match state.lock() {
+        Ok(guard) => guard,
+        Err(e) => {
+            return Ok(serde_json::json!({
+                "error": true,
+                "code": "MUTEX_LOCK_ERROR",
+                "message": format!("Failed to acquire lock: {}", e),
+                "permission": permission
+            }));
+        }
+    };
+
     // Nettoyer les permissions expirées avant vérification
-    let mut manager = state.lock().map_err(|e| e.to_string())?;
     manager.cleanup_expired_permissions();
-    Ok(manager.has_permission(&permission_enum))
+    let has_perm = manager.has_permission(&permission_enum);
+
+    Ok(serde_json::json!({
+        "success": true,
+        "has_permission": has_perm,
+        "permission": permission
+    }))
 }
 
 /// V2.1 Phase 3 : Vérifie une permission avec contexte (projectId pour isolation par projet)
@@ -108,50 +179,149 @@ pub async fn has_permission_with_context(
     state: State<'_, Mutex<PermissionManager<Wry>>>,
     permission: String,
     project_id: Option<String>,
-) -> Result<bool, String> {
-    let permission_enum = parse_permission(&permission)?;
-    let mut manager = state.lock().map_err(|e| e.to_string())?;
+) -> Result<serde_json::Value, String> {
+    let permission_enum = match parse_permission(&permission) {
+        Ok(perm) => perm,
+        Err(err) => {
+            return Ok(serde_json::json!({
+                "error": true,
+                "code": "INVALID_PERMISSION",
+                "message": err,
+                "permission": permission,
+                "project_id": project_id
+            }));
+        }
+    };
+
+    let mut manager = match state.lock() {
+        Ok(guard) => guard,
+        Err(e) => {
+            return Ok(serde_json::json!({
+                "error": true,
+                "code": "MUTEX_LOCK_ERROR",
+                "message": format!("Failed to acquire lock: {}", e),
+                "permission": permission,
+                "project_id": project_id
+            }));
+        }
+    };
+
     // Nettoyer les permissions expirées avant vérification
     manager.cleanup_expired_permissions();
-    Ok(manager.has_permission_with_context(
+    let has_perm = manager.has_permission_with_context(
         &permission_enum,
         project_id.as_deref(),
         None
-    ))
+    );
+
+    Ok(serde_json::json!({
+        "success": true,
+        "has_permission": has_perm,
+        "permission": permission,
+        "project_id": project_id
+    }))
 }
 
 #[tauri::command]
 pub async fn get_permission_logs(
     state: State<'_, Mutex<PermissionManager<Wry>>>,
-) -> Result<Vec<PermissionLog>, String> {
-    let manager = state.lock().map_err(|e| e.to_string())?;
-    Ok(manager.get_audit_logs())
+) -> Result<serde_json::Value, String> {
+    let manager = match state.lock() {
+        Ok(guard) => guard,
+        Err(e) => {
+            return Ok(serde_json::json!({
+                "error": true,
+                "code": "MUTEX_LOCK_ERROR",
+                "message": format!("Failed to acquire lock: {}", e),
+            }));
+        }
+    };
+
+    Ok(serde_json::json!({
+        "success": true,
+        "logs": manager.get_audit_logs()
+    }))
 }
 
 #[tauri::command]
 pub async fn clear_permission_logs(
     state: State<'_, Mutex<PermissionManager<Wry>>>,
-) -> Result<(), String> {
-    let mut manager = state.lock().map_err(|e| e.to_string())?;
-    manager.clear_audit_logs()
+) -> Result<serde_json::Value, String> {
+    let mut manager = match state.lock() {
+        Ok(guard) => guard,
+        Err(e) => {
+            return Ok(serde_json::json!({
+                "error": true,
+                "code": "MUTEX_LOCK_ERROR",
+                "message": format!("Failed to acquire lock: {}", e),
+            }));
+        }
+    };
+
+    match manager.clear_audit_logs() {
+        Ok(_) => Ok(serde_json::json!({
+            "success": true,
+            "message": "Permission logs cleared successfully"
+        })),
+        Err(err) => Ok(serde_json::json!({
+            "error": true,
+            "code": "CLEAR_LOGS_ERROR",
+            "message": format!("Failed to clear permission logs: {}", err),
+        })),
+    }
 }
 
 #[tauri::command]
 pub async fn export_permission_logs(
     state: State<'_, Mutex<PermissionManager<Wry>>>,
     path: String,
-) -> Result<(), String> {
-    let manager = state.lock().map_err(|e| e.to_string())?;
-    manager.export_audit_logs(PathBuf::from(path))
+) -> Result<serde_json::Value, String> {
+    let manager = match state.lock() {
+        Ok(guard) => guard,
+        Err(e) => {
+            return Ok(serde_json::json!({
+                "error": true,
+                "code": "MUTEX_LOCK_ERROR",
+                "message": format!("Failed to acquire lock: {}", e),
+            }));
+        }
+    };
+
+    match manager.export_audit_logs(PathBuf::from(path.clone())) {
+        Ok(_) => Ok(serde_json::json!({
+            "success": true,
+            "message": "Permission logs exported successfully",
+            "path": path
+        })),
+        Err(err) => Ok(serde_json::json!({
+            "error": true,
+            "code": "EXPORT_LOGS_ERROR",
+            "message": format!("Failed to export permission logs: {}", err),
+            "path": path
+        })),
+    }
 }
 
 /// Récupère l'état du mode parano
 #[tauri::command]
 pub async fn get_parano_mode(
     state: State<'_, Mutex<PermissionManager<Wry>>>,
-) -> Result<bool, String> {
-    let manager = state.lock().map_err(|e| e.to_string())?;
-    Ok(manager.is_parano_mode())
+) -> Result<serde_json::Value, String> {
+    let manager = match state.lock() {
+        Ok(guard) => guard,
+        Err(e) => {
+            return Ok(serde_json::json!({
+                "error": true,
+                "code": "MUTEX_LOCK_ERROR",
+                "message": format!("Failed to acquire lock: {}", e),
+            }));
+        }
+    };
+
+    Ok(serde_json::json!({
+        "success": true,
+        "parano_mode": manager.is_parano_mode()
+    }))
 }
 
 /// Active/désactive le mode parano
@@ -159,8 +329,26 @@ pub async fn get_parano_mode(
 pub async fn set_parano_mode(
     state: State<'_, Mutex<PermissionManager<Wry>>>,
     enabled: bool,
-) -> Result<(), String> {
-    let mut manager = state.lock().map_err(|e| e.to_string())?;
+) -> Result<serde_json::Value, String> {
+    let mut manager = match state.lock() {
+        Ok(guard) => guard,
+        Err(e) => {
+            return Ok(serde_json::json!({
+                "error": true,
+                "code": "MUTEX_LOCK_ERROR",
+                "message": format!("Failed to acquire lock: {}", e),
+            }));
+        }
+    };
+
     manager.set_parano_mode(enabled);
-    Ok(())
+    Ok(serde_json::json!({
+        "success": true,
+        "parano_mode": enabled,
+        "message": if enabled {
+            "Parano mode enabled successfully"
+        } else {
+            "Parano mode disabled successfully"
+        }
+    }))
 }

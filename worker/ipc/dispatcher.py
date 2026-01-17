@@ -12,18 +12,48 @@ try:
     from services.tunnel_service import tunnel_service
     from services.http_server import RemoteAccessServer
     from services.prompt_builder_service import prompt_builder_service
+    from services.search_service import search_service  # V2.1 : Recherche web
     from services.audit_service import audit_service, ActionType
     from services.project_service import project_service  # V2.1 : Service projets
     from services.path_validator import path_validator  # V2.1 : Validation path traversal
+    from services.input_validator import input_validator  # V2.1 Phase 3 : Validation d'entrée stricte
+    from services.rate_limiter import rate_limiter  # V2.1 Phase 3 : Rate limiting pour sécurité
     from ipc.permission_guard import permission_guard  # V2.1 : Defense-in-depth permissions
 except ImportError as e:
-    print(f"[Dispatcher Error] Services import failed: {e}", file=sys.stderr)
+    print(f"[Dispatcher Error] Services import failed: {str(e)}", file=sys.stderr)
     project_service = None
+    search_service = None
+    input_validator = None
+    rate_limiter = None
 
 class CommandDispatcher:
     def __init__(self, ipc=None):
         self.ipc = ipc
         self.remote_server = None  # Serveur HTTP pour accès distant
+        self.active_chat_id = None  # 🔧 CORRECTION: ID du chat actif pour cancellation
+        self.cancel_streaming = False  # 🔧 CORRECTION: Flag pour stopper le streaming
+
+    def _create_error_response(self, error_code, error_message, context=None, details=None):
+        """Crée une réponse d'erreur standardisée compatible avec le frontend"""
+        response = {
+            "error": True,
+            "code": error_code,
+            "message": error_message
+        }
+        if context:
+            response["context"] = context
+        if details:
+            response["details"] = details
+        return response
+
+    def _create_success_response(self, data=None, message=None):
+        """Crée une réponse de succès standardisée"""
+        response = {"success": True}
+        if data is not None:
+            response["data"] = data
+        if message:
+            response["message"] = message
+        return response
 
     def dispatch(self, cmd, payload):
         # ✅ PERMISSION GUARD (Defense in Depth - V2.1)
@@ -32,11 +62,47 @@ class CommandDispatcher:
         allowed, error = permission_guard.check(cmd, payload)
         if not allowed:
             print(f"[SECURITY] Permission denied by Python guard: {cmd} - {error}", file=sys.stderr)
-            return {"success": False, "error": f"Permission denied: {error}"}
+            return self._create_error_response("PERMISSION_DENIED", f"Permission denied: {error}", cmd)
+
+        # ✅ V2.1 Phase 3: Validation de la taille du payload (sécurité DoS)
+        # Vérifier que le payload n'est pas trop volumineux
+        if input_validator:
+            is_valid, error = input_validator.validate_payload_size(payload)
+            if not is_valid:
+                print(f"[SECURITY] Oversized payload blocked: {len(str(payload))} bytes - {error}", file=sys.stderr)
+                return self._create_error_response("PAYLOAD_TOO_LARGE", error, cmd)
+
+        # ✅ V2.1 Phase 3: RATE LIMITING (Protection contre les attaques par force brute)
+        # Vérifier les limites de requêtes pour les commandes sensibles
+        if rate_limiter:
+            # Obtenir un identifiant client (IP ou session ID)
+            # Note: Dans Tauri, l'IP n'est pas directement disponible, donc on utilise un client_id du payload
+            # ou un identifiant de session. Pour l'instant, utiliser une combinaison commande+session.
+            client_id = payload.get("client_id", "unknown")
+
+            # Pour les commandes sensibles, appliquer le rate limiting
+            if cmd in rate_limiter.get_limits():
+                allowed, retry_after = rate_limiter.check_limit(cmd, client_id)
+                if not allowed:
+                    print(f"[SECURITY] Rate limit exceeded for {cmd} from {client_id}. Blocked for {retry_after} seconds", file=sys.stderr)
+                    return self._create_error_response(
+                        "RATE_LIMIT_EXCEEDED",
+                        f"Too many requests. Please try again in {retry_after} seconds",
+                        cmd
+                    )
         
         # --- HEALTH CHECK ---
         if cmd == "health_check":
             return {"status": "healthy"}
+        
+        # 🔧 CORRECTION URGENTE: Commande pour stopper le streaming
+        if cmd == "cancel_chat":
+            chat_id = payload.get("chat_id")
+            if chat_id == self.active_chat_id:
+                self.cancel_streaming = True
+                print(f"🛑 Streaming cancelled for chat_id: {chat_id}", file=sys.stderr)
+                return {"success": True, "message": "Streaming cancelled"}
+            return {"success": False, "error": "No active chat or wrong chat_id"}
         
         # --- SHUTDOWN (fermeture propre) ---
         if cmd == "shutdown":
@@ -57,6 +123,15 @@ class CommandDispatcher:
         if cmd == "save_settings":
             return system_service.save_settings(payload)
 
+        if cmd == "web_search_available":
+            available = False
+            try:
+                if search_service and hasattr(search_service, "is_available"):
+                    available = bool(search_service.is_available())
+            except Exception:
+                available = False
+            return {"available": available}
+
         # --- GESTION DES MODÈLES OLLAMA ---
         if cmd == "pull":
             model_name = payload.get("model")
@@ -65,47 +140,103 @@ class CommandDispatcher:
 
         if cmd == "get_models":
             try:
-                result = ollama.list()
-                # ollama.list() peut retourner différents formats selon la version
+                # Utilisation directe de la CLI 'ollama list' (Prouvé fonctionnel sur ce système)
+                import subprocess
+
+                # Création flag pour cacher fenêtre sur Windows
+                creation_flags = 0x08000000 if sys.platform == 'win32' else 0
+
+                result = subprocess.run(
+                    ["ollama", "list"],
+                    capture_output=True,
+                    text=True,
+                    encoding='utf-8',
+                    errors='ignore',
+                    creationflags=creation_flags,
+                    timeout=10
+                )
+
+                if result.returncode != 0:
+                     monitoring_service.add_log(f"ERROR: Ollama CLI returned code {result.returncode}")
+                     return self._create_error_response("OLLAMA_CLI_ERROR", f"CLI Error: {result.stderr}")
+
+                # Parsing de la sortie textuelle (NAME ID SIZE MODIFIED)
                 models = []
-                if isinstance(result, dict):
-                    models = result.get('models', [])
-                elif hasattr(result, 'models'):
-                    # Convertir les objets en dict si nécessaire
-                    raw_models = result.models if result.models else []
-                    for m in raw_models:
-                        if hasattr(m, 'model'):
-                            models.append({
-                                "name": m.model if hasattr(m, 'model') else str(m),
-                                "size": m.size if hasattr(m, 'size') else 0
-                            })
-                        elif hasattr(m, 'name'):
-                            models.append({
-                                "name": m.name,
-                                "size": m.size if hasattr(m, 'size') else 0
-                            })
-                        elif isinstance(m, dict):
-                            models.append(m)
-                        else:
-                            models.append({"name": str(m), "size": 0})
-                return models  # Retourner directement la liste pour compatibilité frontend
+                lines = result.stdout.strip().split('\n')
+
+                # Ignorer l'en-tête
+                start_index = 0
+                if len(lines) > 0 and "NAME" in lines[0].upper() and "ID" in lines[0].upper():
+                    start_index = 1
+
+                for line in lines[start_index:]:
+                    parts = line.split()
+                    if len(parts) >= 1:
+                        # parts[0] = nom (ex: deepseek-r1:7b)
+                        # parts[2] = taille + unit (ex: 4.7 GB)
+                        name = parts[0]
+                        size_bytes = 0
+
+                        # 🔧 CORRECTION: Parsing amélioré de la taille
+                        # Format attendu : "4.7 GB" ou "4.7GB"
+                        if len(parts) >= 3:
+                            try:
+                                import re
+                                size_value = None
+                                size_unit = None
+                                if len(parts) >= 4:
+                                    if re.match(r'^[0-9.]+$', parts[2]) and re.match(r'^[A-Za-z]+$', parts[3]):
+                                        size_value = float(parts[2])
+                                        size_unit = parts[3].upper()
+                                if size_value is None:
+                                    size_clean = parts[2]
+                                    if len(parts) >= 4:
+                                        size_clean = f"{parts[2]}{parts[3]}"
+                                    size_clean = size_clean.replace(' ', '')
+                                    match = re.match(r'^([0-9.]+)([A-Za-z]+)$', size_clean)
+                                    if match:
+                                        size_value = float(match.group(1))
+                                        size_unit = match.group(2).upper()
+                                if size_unit and size_value is not None:
+                                    if size_unit.endswith('IB'):
+                                        size_unit = size_unit.replace('IB', 'B')
+                                    if size_unit == 'K':
+                                        size_unit = 'KB'
+                                    elif size_unit == 'M':
+                                        size_unit = 'MB'
+                                    elif size_unit == 'G':
+                                        size_unit = 'GB'
+                                    elif size_unit == 'T':
+                                        size_unit = 'TB'
+                                    unit_multipliers = {
+                                        'B': 1,
+                                        'KB': 1024,
+                                        'MB': 1024 * 1024,
+                                        'GB': 1024 * 1024 * 1024,
+                                        'TB': 1024 * 1024 * 1024 * 1024
+                                    }
+                                    if size_unit in unit_multipliers:
+                                        size_bytes = int(size_value * unit_multipliers[size_unit])
+                            except Exception as e:
+                                print(f"[DEBUG] Failed to parse size: {str(e)}", file=sys.stderr)
+                                size_bytes = 0
+                        # On retourne un objet simple avec les champs attendus par le frontend
+                        models.append({
+                            "name": name,
+                            "size": size_bytes,  # Taille en bytes pour le frontend
+                            "details": {"format": "gguf", "family": "llama", "parameter_size": "7B", "quantization_level": "Q4_0"}
+                        })
+
+                # 🔧 CORRECTION: Logger les modèles trouvés pour debug
+                print(f"[DEBUG] Found {len(models)} models: {', '.join([m['name'] for m in models])}", file=sys.stderr)
+
+                # 🔧 CORRECTION CRITIQUE: Retourner directement le tableau pour compatibilité frontend
+                # Le ModelManager attend un tableau, pas un objet {success: true, data: models}
+                return models
+
             except Exception as e:
-                monitoring_service.add_log(f"ERROR: get_models failed: {str(e)}")
-                # Fallback avec subprocess
-                try:
-                    import subprocess
-                    result = subprocess.run(["ollama", "list"], capture_output=True, text=True, timeout=10)
-                    if result.returncode == 0:
-                        lines = result.stdout.strip().split('\n')[1:]  # Skip header
-                        models = []
-                        for line in lines:
-                            parts = line.split()
-                            if parts:
-                                models.append({"name": parts[0], "size": 0})
-                        return models
-                except:
-                    pass
-                return []
+                monitoring_service.add_log(f"ERROR: get_models subprocess failed: {str(e)}")
+                return self._create_error_response("MODEL_LIST_ERROR", f"Failed to list models via CLI: {str(e)}")
 
         if cmd == "delete_model":
             return ollama_service.delete_model(payload.get("name"))
@@ -179,6 +310,8 @@ class CommandDispatcher:
             chat_id = payload.get("chat_id") # Peut être None
             project_id = payload.get("project_id")  # V2.1 : ID du projet lié
             language = payload.get("language", "en")  # Langue de l'interface
+            web_query = payload.get("web_query")
+            web_max_results = payload.get("web_max_results", 5)
             context_files = payload.get("context_files", [])  # NOUVEAU: Fichiers de contexte
             memory_keys = payload.get("memory_keys", [])  # NOUVEAU: Clés de mémoire
             repo_context = payload.get("repo_context")  # NOUVEAU: Contexte repository
@@ -193,6 +326,10 @@ class CommandDispatcher:
 
             # 2. Définir le générateur pour le streaming
             def chat_stream():
+                # 🔧 CORRECTION: Réinitialiser le flag de cancellation
+                self.cancel_streaming = False
+                self.active_chat_id = active_chat_id
+                
                 full_response = ""
                 try:
                     # Récupérer tous les messages précédents pour le contexte
@@ -238,12 +375,32 @@ class CommandDispatcher:
                             pass  # memory_service pas disponible
                     
                     # Construire le prompt avec PromptBuilder (V2)
+                    web_context = None
+                    if web_query:
+                        if not search_service:
+                            raise Exception("Web search service unavailable")
+
+                        settings = system_service.load_settings() if system_service else {}
+                        if not settings.get("internetAccess", False):
+                            raise Exception("Internet access disabled in settings")
+
+                        try:
+                            max_results = int(web_max_results)
+                        except Exception:
+                            max_results = 5
+
+                        if max_results < 1 or max_results > 10:
+                            max_results = 5
+
+                        web_context = search_service.search_web(web_query, max_results=max_results)
+
                     prompt_obj = prompt_builder_service.build_prompt(
                         user_message=prompt,
                         chat_history=previous_messages,
                         context_files=context_files,
                         memory_entries=memory_entries,
                         repo_context=repo_context,
+                        web_context=web_context,
                         language=language,
                     )
                     
@@ -277,6 +434,12 @@ class CommandDispatcher:
                     
                     # Appel à Ollama avec l'historique complet
                     for chunk in ollama.chat(model=model, messages=messages_for_ollama, stream=True):
+                        # 🔧 CORRECTION: Vérifier si l'utilisateur a annulé
+                        if self.cancel_streaming:
+                            print(f"[Dispatcher] Streaming cancelled by user for chat_id: {active_chat_id}", file=sys.stderr)
+                            yield {"event": "cancelled", "chat_id": active_chat_id, "message": "Streaming stopped by user"}
+                            break
+                        
                         token = chunk['message']['content']
                         full_response += token
                         # On renvoie le token au frontend via l'IPC
@@ -293,6 +456,11 @@ class CommandDispatcher:
                 except Exception as e:
                     monitoring_service.add_log(f"CHAT ERROR: {str(e)}")
                     yield {"event": "error", "message": str(e), "chat_id": active_chat_id}
+                
+                finally:
+                    # 🔧 CORRECTION: Nettoyer l'état de cancellation
+                    self.cancel_streaming = False
+                    self.active_chat_id = None
 
             return chat_stream()
 
@@ -325,6 +493,9 @@ class CommandDispatcher:
         # Génère un nouveau token d'authentification
         if cmd == "tunnel_generate_token":
             expires_hours = payload.get("expires_hours", 24)
+            # ✅ V2.1 Phase 3: Validation des paramètres
+            if expires_hours is not None and (expires_hours < 1 or expires_hours > 720):  # 1h min, 30 jours max
+                return {"success": False, "error": "expires_hours must be between 1 and 720"}
             return tunnel_service.generate_auth_token(expires_hours)
         
         # Démarre le tunnel et le serveur HTTP
@@ -381,12 +552,24 @@ class CommandDispatcher:
             ip = payload.get("ip")
             if not ip:
                 return {"success": False, "error": "Missing 'ip' parameter"}
+            # ✅ V2.1 Phase 3: Validation stricte de l'adresse IP
+            if input_validator:
+                is_valid, error = input_validator.validate_ip_address(ip)
+                if not is_valid:
+                    print(f"[SECURITY] Invalid IP address blocked: {ip} - {error}", file=sys.stderr)
+                    return {"success": False, "error": f"Invalid IP address: {error}"}
             return tunnel_service.add_allowed_ip(ip)
-        
+
         if cmd == "tunnel_remove_allowed_ip":
             ip = payload.get("ip")
             if not ip:
                 return {"success": False, "error": "Missing 'ip' parameter"}
+            # ✅ V2.1 Phase 3: Validation stricte de l'adresse IP
+            if input_validator:
+                is_valid, error = input_validator.validate_ip_address(ip)
+                if not is_valid:
+                    print(f"[SECURITY] Invalid IP address blocked: {ip} - {error}", file=sys.stderr)
+                    return {"success": False, "error": f"Invalid IP address: {error}"}
             return tunnel_service.remove_allowed_ip(ip)
         
         # Valide un token (pour debug/test)
@@ -634,16 +817,125 @@ class CommandDispatcher:
             except Exception as e:
                 return {"success": False, "error": str(e)}
 
+        # --- GESTION DES PERMISSIONS (V2.1 Phase 3) ---
+        # Accorder une permission explicitement (appelé par le système de permissions principal)
+        if cmd == "grant_permission":
+            permission_name = payload.get("permission")
+            if not permission_name:
+                return {"success": False, "error": "permission is required"}
+
+            try:
+                permission_guard.grant_permission(permission_name)
+                print(f"[PERMISSION MANAGEMENT] Permission {permission_name} granted via explicit command", file=sys.stderr)
+                return {"success": True, "message": f"Permission {permission_name} granted"}
+            except Exception as e:
+                return {"success": False, "error": str(e)}
+
+        # Révoquer une permission explicitement
+        if cmd == "revoke_permission":
+            permission_name = payload.get("permission")
+            if not permission_name:
+                return {"success": False, "error": "permission is required"}
+
+            try:
+                permission_guard.revoke_permission(permission_name)
+                print(f"[PERMISSION MANAGEMENT] Permission {permission_name} revoked via explicit command", file=sys.stderr)
+                return {"success": True, "message": f"Permission {permission_name} revoked"}
+            except Exception as e:
+                return {"success": False, "error": str(e)}
+
+        # Vérifier si une permission est accordée
+        if cmd == "has_permission":
+            permission_name = payload.get("permission")
+            if not permission_name:
+                return {"success": False, "error": "permission is required"}
+
+            try:
+                has_perm = permission_guard.has_permission(permission_name)
+                return {"success": True, "has_permission": has_perm}
+            except Exception as e:
+                return {"success": False, "error": str(e)}
+
+        # --- GESTION DU RATE LIMITING (V2.1 Phase 3) ---
+        # Vérifier si une IP est bloquée
+        if cmd == "rate_limiter_is_blocked":
+            client_id = payload.get("client_id")
+            if not client_id:
+                return {"success": False, "error": "client_id is required"}
+
+            try:
+                if rate_limiter:
+                    is_blocked = rate_limiter.is_blocked(client_id)
+                    return {"success": True, "is_blocked": is_blocked}
+                return {"success": False, "error": "Rate limiter not available"}
+            except Exception as e:
+                return {"success": False, "error": str(e)}
+
+        # Obtenir la liste des IPs bloquées
+        if cmd == "rate_limiter_get_blocked":
+            try:
+                if rate_limiter:
+                    blocked_ips = rate_limiter.get_blocked_ips()
+                    return {"success": True, "blocked_ips": blocked_ips}
+                return {"success": False, "error": "Rate limiter not available"}
+            except Exception as e:
+                return {"success": False, "error": str(e)}
+
+        # Définir une limite personnalisée pour une commande
+        if cmd == "rate_limiter_set_limit":
+            command = payload.get("command")
+            limit = payload.get("limit")
+            if not command or limit is None:
+                return {"success": False, "error": "command and limit are required"}
+
+            try:
+                if rate_limiter:
+                    rate_limiter.set_limit(command, limit)
+                    return {"success": True, "message": f"Limit for {command} set to {limit} requests/minute"}
+                return {"success": False, "error": "Rate limiter not available"}
+            except Exception as e:
+                return {"success": False, "error": str(e)}
+
+        # Obtenir les limites actuelles
+        if cmd == "rate_limiter_get_limits":
+            try:
+                if rate_limiter:
+                    limits = rate_limiter.get_limits()
+                    return {"success": True, "limits": limits}
+                return {"success": False, "error": "Rate limiter not available"}
+            except Exception as e:
+                return {"success": False, "error": str(e)}
+
+        # Réinitialiser toutes les limites
+        if cmd == "rate_limiter_reset":
+            try:
+                if rate_limiter:
+                    rate_limiter.reset_limits()
+                    return {"success": True, "message": "All rate limits reset to defaults"}
+                return {"success": False, "error": "Rate limiter not available"}
+            except Exception as e:
+                return {"success": False, "error": str(e)}
+
+        # Obtenir les statistiques du rate limiter
+        if cmd == "rate_limiter_get_stats":
+            try:
+                if rate_limiter:
+                    stats = rate_limiter.get_stats()
+                    return {"success": True, "stats": stats}
+                return {"success": False, "error": "Rate limiter not available"}
+            except Exception as e:
+                return {"success": False, "error": str(e)}
+
         # --- GESTION DES CONVERSATIONS PROJETS (V2.1) ---
         if chat_history_service:
             # Mettre à jour le projectId d'une conversation
             if cmd == "update_conversation_project":
                 chat_id = payload.get("chat_id")
                 project_id = payload.get("project_id")  # Peut être None pour retirer le lien
-                
+
                 if not chat_id:
                     return {"success": False, "error": "chat_id is required"}
-                
+
                 try:
                     success = chat_history_service.update_conversation_project(chat_id, project_id)
                     return {"success": success}

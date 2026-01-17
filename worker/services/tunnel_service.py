@@ -263,6 +263,32 @@ class TunnelService:
         
         return None
     
+
+    def _fetch_remote_sha256(self, download_url: str) -> Optional[str]:
+        """Best-effort fetch of a .sha256 file next to the download URL."""
+        sha_url = f"{download_url}.sha256"
+        try:
+            request = urllib.request.Request(
+                sha_url,
+                headers={'User-Agent': 'HorizonAI/1.0'}
+            )
+            with urllib.request.urlopen(request, timeout=30) as response:
+                content = response.read().decode('utf-8', errors='ignore').strip()
+            if not content:
+                return None
+            return content.split()[0]
+        except Exception as e:
+            print(f"[TunnelService] Warning: checksum fetch failed: {e}", file=sys.stderr)
+            return None
+
+    def _calculate_sha256(self, file_path: Path) -> str:
+        """Calculate SHA256 for a file."""
+        hasher = hashlib.sha256()
+        with open(file_path, 'rb') as f:
+            for chunk in iter(lambda: f.read(1024 * 1024), b''):
+                hasher.update(chunk)
+        return hasher.hexdigest()
+
     def _find_cloudflared(self) -> Optional[str]:
         """Trouve l'exécutable cloudflared"""
         # D'abord vérifier notre installation locale
@@ -351,6 +377,20 @@ class TunnelService:
             
             self.install_progress = 90
             print(f"[TunnelService] Download complete, size: {downloaded} bytes", file=sys.stderr)
+            expected_sha256 = self._fetch_remote_sha256(download_url)
+            if expected_sha256:
+                actual_sha256 = self._calculate_sha256(temp_file)
+                if actual_sha256.lower() != expected_sha256.lower():
+                    try:
+                        temp_file.unlink()
+                    except FileNotFoundError:
+                        pass
+                    return {
+                        "success": False,
+                        "error": "Checksum verification failed for downloaded cloudflared"
+                    }
+            else:
+                print("[TunnelService] Warning: No checksum available; proceeding without verification", file=sys.stderr)
             
             # Si c'est un .tgz (macOS), extraire
             if download_url.endswith('.tgz'):

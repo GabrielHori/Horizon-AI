@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import "./index.css"
 import App from './App.jsx'
 import { ThemeProvider } from './contexts/ThemeContext'
+import ErrorBoundary from './components/ErrorBoundary' // 🛡️ STABILISATION: Gestion erreurs globale
 
 // ✅ Bloquer le clic droit en production (pas en dev)
 // Cela empêche l'utilisateur d'ouvrir le menu contextuel du navigateur
@@ -11,7 +12,7 @@ if (import.meta.env.PROD) {
     e.preventDefault();
     return false;
   });
-  
+
   // Également bloquer certains raccourcis clavier (F12, Ctrl+Shift+I, etc.)
   document.addEventListener('keydown', (e) => {
     // Bloquer F12 (DevTools)
@@ -47,7 +48,9 @@ document.addEventListener('drop', (e) => e.preventDefault());
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <ThemeProvider>
-      <App />
+      <ErrorBoundary>
+        <App />
+      </ErrorBoundary>
     </ThemeProvider>
   </StrictMode>,
 )

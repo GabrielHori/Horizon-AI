@@ -13,6 +13,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useTheme } from '../../contexts/ThemeContext';
 import { translations } from '../../constants/translations';
 import { PromptViewer } from '../PromptViewer';
+import ContextPanel from '../ContextPanel'; // ✅ SPRINT 2: Import ContextPanel
+import { FolderOpen, X } from 'lucide-react'; // ✅ SPRINT 2: Import Icons
 
 // Hooks de logique
 import { useChatMessages } from './hooks/useChatMessages';
@@ -37,9 +39,11 @@ import { SecurityNotification } from '../SecurityNotification';
 import { PermissionRequestModal } from '../PermissionRequestModal';
 import { PermissionBar } from '../PermissionBar';
 
-const AIChatPanel = ({ selectedModel, setSelectedModel, chatId, setSelectedChatId, language = 'fr' }) => {
+const AIChatPanel = ({ selectedModel, setSelectedModel, selectedStyle, chatIntent, setChatIntent, prefillPrompt, setPrefillPrompt, chatId, setSelectedChatId, language = 'fr', modelOverride, setModelOverride }) => {
   const { isDarkMode } = useTheme();
   const t = translations[language]?.chat || translations.en.chat;
+
+  const styleLabel = translations[language]?.styles?.[selectedStyle]?.label || selectedStyle;
 
   // Modèle et chat ID actifs
   const activeModel = selectedModel;
@@ -47,9 +51,12 @@ const AIChatPanel = ({ selectedModel, setSelectedModel, chatId, setSelectedChatI
 
   // État local
   const [isTyping, setIsTyping] = useState(false);
+  const [useWeb, setUseWeb] = useState(false);
+  const [webAvailable, setWebAvailable] = useState(true);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [conversationToDelete, setConversationToDelete] = useState(null);
   const [showPromptViewer, setShowPromptViewer] = useState(false);
+  const [showContextPanel, setShowContextPanel] = useState(false); // ✅ SPRINT 2: State ContextPanel
   const [currentPrompt, setCurrentPrompt] = useState(null);
 
   // V2.1 Phase 3 : État sécurité
@@ -116,21 +123,83 @@ const AIChatPanel = ({ selectedModel, setSelectedModel, chatId, setSelectedChatI
     }
   }, [language]);
 
+  // 🔧 CORRECTION URGENTE: Callback pour gérer les erreurs de permissions détectées
+  const handlePermissionError = useCallback((errorInfo) => {
+    console.log('[AIChatPanel] Permission error detected:', errorInfo);
+
+    // Créer une requête de permission basée sur l'erreur
+    setRequestedPermission({
+      permission: errorInfo.permission || 'FileRead',
+      context: errorInfo.blockedAction || (language === 'fr' ? 'Action bloquée pendant le chat' : 'Action blocked during chat'),
+      reason: language === 'fr'
+        ? `L'IA a besoin de cette permission pour continuer`
+        : `AI needs this permission to continue`
+    });
+    setShowPermissionModal(true);
+  }, [language]);
+
+  const handleChatCompleted = useCallback((chatId) => {
+    if (!chatId) return;
+    if (activeChatId !== chatId) {
+      setSelectedChatId?.(chatId);
+    }
+    fetchConversations();
+  }, [activeChatId, setSelectedChatId, fetchConversations]);
+
   // Hook: Gestion du streaming
   const {
     streamStartTime,
     setStreamStartTime,
     currentPrompt: streamingPrompt,
     setCurrentPrompt: setStreamingPrompt,
-    handleStop
+    handleStop: handleStopStream
   } = useChatStreaming({
     activeModel,
     language,
     messages,
     updateLastMessage,
     setIsTyping,
-    onPermissionError: handlePermissionRequestDetected  // V2.1 Phase 3 : Callback erreur permission
+    onPermissionError: handlePermissionError,  // 🔧 CORRECTION: Callback câblé
+    onChatCompleted: handleChatCompleted
   });
+
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadWebAvailability = async () => {
+      try {
+        const res = await requestWorker("web_search_available");
+        const settings = await requestWorker("load_settings");
+        const available = !!res?.available && !!settings?.internetAccess;
+        if (isMounted) {
+          setWebAvailable(available);
+          if (!available) {
+            setUseWeb(false);
+          }
+        }
+      } catch (error) {
+        if (isMounted) {
+          setWebAvailable(false);
+          setUseWeb(false);
+        }
+      }
+    };
+
+    loadWebAvailability();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Callback: Envoi de message
+  const onMessageSent = useCallback(({ userMessage, image, assistantModel }) => {
+    addMessages([
+      { role: 'user', content: userMessage, image },
+      { role: 'assistant', content: '', model: assistantModel, prompt_id: null }
+    ]);
+    resetAutoScroll();
+  }, [addMessages, resetAutoScroll]);
 
   // Synchroniser le prompt du streaming
   useEffect(() => {
@@ -227,6 +296,8 @@ const AIChatPanel = ({ selectedModel, setSelectedModel, chatId, setSelectedChatI
     setIsTyping,
     selectedRepo,
     repoAnalysis,
+    useWeb,
+    webAvailable,
     onMessageSent: ({ userMessage, image, assistantModel }) => {
       addMessages([
         { role: 'user', content: userMessage, image },
@@ -254,6 +325,15 @@ const AIChatPanel = ({ selectedModel, setSelectedModel, chatId, setSelectedChatI
     handleRetry,
     sendPendingMessage  // V2.1 Phase 3 : Fonction pour envoyer message en attente
   } = chatInput;
+
+  useEffect(() => {
+    if (!prefillPrompt) return;
+    setInput(prefillPrompt);
+    setPrefillPrompt?.(null);
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 0);
+  }, [prefillPrompt, setInput, setPrefillPrompt, inputRef]);
 
   // V2.1 Phase 3 : Callback demande permission depuis PermissionBar ou SecurityNotification
   // (Défini APRÈS useChatInput pour avoir accès à sendPendingMessage, setInput, inputRef)
@@ -441,11 +521,13 @@ const AIChatPanel = ({ selectedModel, setSelectedModel, chatId, setSelectedChatI
   const handleNewChat = () => {
     setSelectedChatId(null);
     clearMessages();
+    setChatIntent?.(null);
   };
 
   // Callback: Sélectionner une conversation (V2.1 Sprint 2.2 : Rechargement contexte)
   const handleSelectChat = async (chatId) => {
     try {
+      setChatIntent?.(null);
       setSelectedChatId(chatId);
 
       // V2.1 Sprint 2.2 : Récupérer le projectId de la conversation depuis le backend
@@ -489,9 +571,10 @@ const AIChatPanel = ({ selectedModel, setSelectedModel, chatId, setSelectedChatI
           }
         }
       } else {
-        // Conversation sans projet → créer/lier projet "Orphelin" automatique (V2.1 Sprint 2.2)
+        // ✅ SPRINT 1: Conversation sans projet → créer/lier projet "Orphelin" automatique (V2.1)
         try {
-          // Récupérer ou créer le projet "Orphelin"
+          console.log('[AIChatPanel] Creating/linking Orphan project for conversation:', chatId);
+
           const orphanResult = await requestWorker("projects_get_or_create_orphan", {
             language: language || "fr"
           });
@@ -499,7 +582,7 @@ const AIChatPanel = ({ selectedModel, setSelectedModel, chatId, setSelectedChatI
           if (orphanResult?.success && orphanResult.project) {
             const orphanProject = orphanResult.project;
 
-            // Recharger la liste des projets pour avoir le projet "Orphelin" à jour
+            // Recharger la liste des projets
             await fetchProjects();
 
             // Lier la conversation au projet "Orphelin"
@@ -509,21 +592,23 @@ const AIChatPanel = ({ selectedModel, setSelectedModel, chatId, setSelectedChatI
             });
 
             if (updateResult?.success) {
-              // Si le projet orphelin est différent du projet actif, le sélectionner
-              // Cela rechargera automatiquement le contexte (scope, repos, mémoire)
+              // Sélectionner le projet orphelin si différent
               if (orphanProject.id !== activeProjectId) {
                 await handleSelectProject(orphanProject.id);
               } else {
-                // Si déjà actif, juste recharger les conversations pour voir la conversation liée
                 fetchConversations();
               }
+
+              console.log('[AIChatPanel] Conversation linked to Orphan project');
+            } else {
+              console.warn('[AIChatPanel] Failed to link conversation to Orphan project');
             }
           } else {
-            console.warn('[V2.1] Failed to get/create orphan project:', orphanResult?.error);
+            console.warn('[AIChatPanel] Failed to get/create Orphan project:', orphanResult?.error);
           }
         } catch (orphanError) {
-          console.error('[V2.1] Failed to create/link orphan project:', orphanError);
-          // En cas d'erreur, continuer sans projet (comportement dégradé)
+          console.error('[AIChatPanel] Error with Orphan project:', orphanError);
+          // Continuer sans projet en cas d'erreur
         }
       }
     } catch (error) {
@@ -559,7 +644,7 @@ const AIChatPanel = ({ selectedModel, setSelectedModel, chatId, setSelectedChatI
 
   // Callback: Arrêter le streaming
   const handleStopStreaming = () => {
-    handleStop();
+    handleStopStream();
   };
 
   // Callback: Afficher le prompt viewer
@@ -590,6 +675,7 @@ const AIChatPanel = ({ selectedModel, setSelectedModel, chatId, setSelectedChatI
         conversations={conversations}
         activeChatId={activeChatId}
         activeModel={activeModel}
+        activeStyleLabel={styleLabel}
         language={language}
         onNewChat={handleNewChat}
         onSelectChat={handleSelectChat}
@@ -615,6 +701,9 @@ const AIChatPanel = ({ selectedModel, setSelectedModel, chatId, setSelectedChatI
             />
           </div>
         )}
+
+        
+        
 
         {/* V2.1 Phase 3 : Notification de blocage (affichée en haut, avant messages) */}
         {blockedAction && missingPermission && (
@@ -661,6 +750,12 @@ const AIChatPanel = ({ selectedModel, setSelectedModel, chatId, setSelectedChatI
           selectedRepo={selectedRepo}
           analyzingRepo={analyzingRepo}
           repoAnalysis={repoAnalysis}
+          useWeb={useWeb}
+          webAvailable={webAvailable}
+          onToggleWeb={() => {
+            if (!webAvailable) return;
+            setUseWeb(prev => !prev);
+          }}
           fileInputRef={fileInputRef}
           inputRef={inputRef}
           onImageSelect={handleImageSelect}
@@ -669,6 +764,7 @@ const AIChatPanel = ({ selectedModel, setSelectedModel, chatId, setSelectedChatI
           onRemoveRepo={handleRemoveRepoWithProject}
           onSubmit={handleSendMessage}
           t={t}
+          intentPlaceholder={chatIntent?.placeholder}
         />
       </div>
 
@@ -690,6 +786,35 @@ const AIChatPanel = ({ selectedModel, setSelectedModel, chatId, setSelectedChatI
           onClose={() => setShowPromptViewer(false)}
           language={language}
         />
+      )}
+
+      {/* ✅ SPRINT 2: Context Panel Modal */}
+      {showContextPanel && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
+          <div className={`relative w-full max-w-5xl h-[85vh] rounded-[24px] shadow-2xl overflow-hidden flex flex-col ${isDarkMode ? 'bg-[#0A0A0A] border border-white/10' : 'bg-white border border-slate-200'}`}>
+
+            {/* Header Modal */}
+            <div className={`flex items-center justify-between px-6 py-4 border-b ${isDarkMode ? 'border-white/5' : 'border-slate-100'}`}>
+              <div className="flex items-center gap-3">
+                <FolderOpen size={20} className="text-blue-500" />
+                <h2 className="text-lg font-black uppercase tracking-widest">
+                  {language === 'fr' ? "Gestionnaire de Fichiers" : "File Manager"}
+                </h2>
+              </div>
+              <button
+                onClick={() => setShowContextPanel(false)}
+                className={`p-2 rounded-full hover:bg-white/10 transition-colors`}
+              >
+                <X size={20} className={isDarkMode ? 'text-white/60' : 'text-slate-400'} />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-hidden">
+              <ContextPanel language={language} isDarkMode={isDarkMode} />
+            </div>
+          </div>
+        </div>
       )}
 
       {/* V2.1 Phase 3 : Modal demande permission */}

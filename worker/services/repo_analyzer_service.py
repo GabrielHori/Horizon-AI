@@ -251,6 +251,9 @@ class RepoAnalyzerService:
                 
             if should_ignore(src):
                 return
+            if src.is_symlink():
+                skipped_files += 1
+                return
             
             try:
                 if src.is_file():
@@ -358,6 +361,8 @@ class RepoAnalyzerService:
                         # Ignorer les dossiers système
                         if item.name.startswith('.') and item.name not in ['.gitignore', '.env.example']:
                             continue
+                        if item.is_symlink():
+                            continue
                         
                         if item.is_dir():
                             if depth < max_depth:
@@ -458,6 +463,8 @@ class RepoAnalyzerService:
                 try:
                     for item in path.rglob('*'):
                         try:
+                            if item.is_symlink():
+                                continue
                             if item.is_file():
                                 ext = item.suffix.lower()
                                 for lang, exts in language_extensions.items():
@@ -573,6 +580,8 @@ class RepoAnalyzerService:
             nonlocal file_count
             if file_count >= max_files:
                 return
+            if path.is_symlink():
+                return
             
             try:
                 if path.is_file() and path.suffix.lower() in self.code_extensions:
@@ -630,6 +639,8 @@ class RepoAnalyzerService:
         try:
             for item in path.rglob('*'):
                 try:
+                    if item.is_symlink():
+                        continue
                     if item.is_file():
                         count += 1
                 except (PermissionError, OSError):
@@ -644,6 +655,8 @@ class RepoAnalyzerService:
         try:
             for item in path.rglob('*'):
                 try:
+                    if item.is_symlink():
+                        continue
                     if item.is_file():
                         total += item.stat().st_size
                 except (PermissionError, OSError):

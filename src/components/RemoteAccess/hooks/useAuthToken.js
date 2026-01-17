@@ -5,6 +5,7 @@
 
 import { useState, useCallback } from 'react';
 import { requestWorker } from '../../../services/bridge';
+import PermissionService from '../../../services/permission_service';
 
 export const useAuthToken = (status, loadStatus, language) => {
   const [currentToken, setCurrentToken] = useState(null);
@@ -15,10 +16,30 @@ export const useAuthToken = (status, loadStatus, language) => {
   const [customTokenStrength, setCustomTokenStrength] = useState(null);
   const [validatingCustomToken, setValidatingCustomToken] = useState(false);
 
+  const ensureRemoteAccessPermission = useCallback(async (actionLabel) => {
+    const hasPermission = await PermissionService.hasPermission('RemoteAccess');
+    if (hasPermission) {
+      return true;
+    }
+    const result = await PermissionService.requestPermission(
+      'RemoteAccess',
+      actionLabel,
+      language === 'fr' ? 'Acces distant' : 'Remote access'
+    );
+    return result === true;
+  }, [language]);
+
+
   const generateToken = useCallback(async () => {
     setGeneratingToken(true);
 
     try {
+      const allowed = await ensureRemoteAccessPermission(
+        language === 'fr' ? "Generer un token d'acces" : 'Generate access token'
+      );
+      if (!allowed) {
+        throw new Error(language === 'fr' ? 'Permission RemoteAccess requise' : 'RemoteAccess permission required');
+      }
       const result = await requestWorker("tunnel_generate_token", { expires_hours: 24 });
       if (result?.token) {
         setCurrentToken(result);
@@ -30,7 +51,7 @@ export const useAuthToken = (status, loadStatus, language) => {
     } finally {
       setGeneratingToken(false);
     }
-  }, [loadStatus, language]);
+  }, [ensureRemoteAccessPermission, loadStatus, language]);
 
   // Simplified token workflow - validate and apply in one step
   const validateAndApplyCustomToken = useCallback(async () => {
@@ -43,6 +64,12 @@ export const useAuthToken = (status, loadStatus, language) => {
     }
 
     try {
+      const allowed = await ensureRemoteAccessPermission(
+        language === 'fr' ? 'Appliquer un token personnalise' : 'Apply custom token'
+      );
+      if (!allowed) {
+        throw new Error(language === 'fr' ? 'Permission RemoteAccess requise' : 'RemoteAccess permission required');
+      }
       setValidatingCustomToken(true);
       setCustomTokenStrength(null);
 
@@ -86,7 +113,7 @@ export const useAuthToken = (status, loadStatus, language) => {
     } finally {
       setValidatingCustomToken(false);
     }
-  }, [customToken, loadStatus, language]);
+  }, [customToken, ensureRemoteAccessPermission, loadStatus, language]);
 
   return {
     currentToken,

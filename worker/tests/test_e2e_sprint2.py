@@ -129,49 +129,49 @@ class TestMemoryManagerWorkflow:
     def test_crud_memory_workflow(self):
         """Vérifier le workflow CRUD complet mémoire (Sprint 2)"""
         # 1. Créer une entrée
-        result = memory_service.save(
+        result = memory_service.save_memory(
             memory_type="user",
             key="test_key",
             value="test_value",
             metadata={"source": "test"}
         )
-        
+
         assert result.get("success"), "La création doit réussir"
-        
+
         # 2. Lister les entrées
-        entries = memory_service.list(memory_type="user")
-        
+        entries = memory_service.list_memories(memory_type="user")
+
         assert len(entries.get("entries", [])) > 0, "L'entrée doit être listée"
         entry = next((e for e in entries["entries"] if e["key"] == "test_key"), None)
         assert entry, "L'entrée créée doit être trouvée"
-        
+
         # 3. Lire l'entrée (visualisation)
-        read_result = memory_service.get(memory_type="user", key="test_key")
-        
+        read_result = memory_service.get_memory(memory_type="user", key="test_key")
+
         assert read_result.get("success"), "La lecture doit réussir"
         assert read_result.get("value") == "test_value", "La valeur doit être correcte"
-        
+
         # 4. Modifier l'entrée (édition inline)
-        update_result = memory_service.save(
+        update_result = memory_service.save_memory(
             memory_type="user",
             key="test_key",
             value="updated_value",
             metadata={"source": "test", "updated": True}
         )
-        
+
         assert update_result.get("success"), "La modification doit réussir"
-        
+
         # 5. Vérifier modification
-        updated = memory_service.get(memory_type="user", key="test_key")
+        updated = memory_service.get_memory(memory_type="user", key="test_key")
         assert updated.get("value") == "updated_value", "La valeur doit être mise à jour"
-        
+
         # 6. Supprimer l'entrée (modal confirmation)
-        delete_result = memory_service.delete(memory_type="user", key="test_key")
-        
+        delete_result = memory_service.delete_memory(memory_type="user", key="test_key")
+
         assert delete_result.get("success"), "La suppression doit réussir"
-        
+
         # 7. Vérifier suppression
-        deleted = memory_service.get(memory_type="user", key="test_key")
+        deleted = memory_service.get_memory(memory_type="user", key="test_key")
         assert not deleted.get("success") or deleted.get("value") is None, "L'entrée doit être supprimée"
     
     def test_memory_encryption_workflow(self):

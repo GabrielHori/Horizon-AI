@@ -16,7 +16,8 @@ export const useChatStreaming = ({
   messages,
   updateLastMessage,
   setIsTyping,
-  onPermissionError  // V2.1 Phase 3 : Callback pour erreur permission détectée
+  onPermissionError,  // V2.1 Phase 3 : Callback pour erreur permission détectée
+  onChatCompleted
 }) => {
   const [streamStartTime, setStreamStartTime] = useState(null);
   const [currentPrompt, setCurrentPrompt] = useState(null);
@@ -52,7 +53,8 @@ export const useChatStreaming = ({
               return {
                 ...prev,
                 content: prev.content + payload.data,
-                model: activeModel
+                model: activeModel,
+                chat_id: payload.chat_id || prev.chat_id
               };
             }
             return prev;
@@ -63,43 +65,72 @@ export const useChatStreaming = ({
         if (payload.event === "done" && payload.chat_id) {
           setIsTyping(false);
           setStreamStartTime(null);
+          updateLastMessage(prev => {
+            if (prev?.role === 'assistant') {
+              return {
+                ...prev,
+                chat_id: payload.chat_id
+              };
+            }
+            return prev;
+          });
+          onChatCompleted?.(payload.chat_id);
+        }
+
+        if (payload.event === "cancelled" && payload.chat_id) {
+          setIsTyping(false);
+          setStreamStartTime(null);
+          updateLastMessage(prev => {
+            if (prev?.role === 'assistant') {
+              return {
+                ...prev,
+                chat_id: payload.chat_id
+              };
+            }
+            return prev;
+          });
+          onChatCompleted?.(payload.chat_id);
         }
 
         // Erreur de streaming
         if (payload.event === "error") {
           setIsTyping(false);
           setStreamStartTime(null);
-          
+
           const errorMessage = payload.message || payload.error || (language === 'fr' ? 'Une erreur est survenue' : 'An error occurred');
-          
+
           // V2.1 Phase 3 : Détecter erreurs de permission dans le message d'erreur
-          if (errorMessage && typeof errorMessage === 'string' && 
-              (errorMessage.includes('Permission') || errorMessage.includes('permission'))) {
+          if (errorMessage && typeof errorMessage === 'string' &&
+            (errorMessage.includes('Permission') || errorMessage.includes('permission'))) {
             // Erreur de permission détectée : notifier le parent
             if (onPermissionError) {
               onPermissionError({
                 permission: errorMessage.includes('FileRead') || errorMessage.includes('read') ? 'FileRead' :
-                           errorMessage.includes('FileWrite') || errorMessage.includes('write') ? 'FileWrite' :
-                           errorMessage.includes('RepoAnalyze') || errorMessage.includes('repo') ? 'RepoAnalyze' :
-                           errorMessage.includes('CommandExecute') || errorMessage.includes('command') ? 'CommandExecute' : 'Unknown',
-                blockedAction: errorMessage.match(/for:\s*(.+?)(?:$|\n)/i)?.[1]?.trim() || 
-                              (language === 'fr' ? 'Action bloquée' : 'Action blocked'),
+                  errorMessage.includes('FileWrite') || errorMessage.includes('write') ? 'FileWrite' :
+                    errorMessage.includes('RepoAnalyze') || errorMessage.includes('repo') ? 'RepoAnalyze' :
+                      errorMessage.includes('CommandExecute') || errorMessage.includes('command') ? 'CommandExecute' : 'Unknown',
+                blockedAction: errorMessage.match(/for:\s*(.+?)(?:$|\n)/i)?.[1]?.trim() ||
+                  (language === 'fr' ? 'Action bloquée' : 'Action blocked'),
                 isError: true
               });
             }
           }
-          
+
           // Toujours afficher l'erreur dans le message
           updateLastMessage(prev => {
             if (prev?.role === 'assistant') {
               return {
                 ...prev,
                 content: errorMessage,
-                isError: true
+                isError: true,
+                chat_id: payload.chat_id || prev.chat_id
               };
             }
             return prev;
           });
+          if (payload.chat_id) {
+            onChatCompleted?.(payload.chat_id);
+          }
         }
       });
     };
@@ -110,7 +141,7 @@ export const useChatStreaming = ({
       isMounted = false;
       if (unlisten) unlisten();
     };
-  }, [language, activeModel, updateLastMessage, setIsTyping, onPermissionError]);
+  }, [language, activeModel, updateLastMessage, setIsTyping, onPermissionError, onChatCompleted]);
 
   // Timer pour détecter les réponses longues
   useEffect(() => {
@@ -120,6 +151,18 @@ export const useChatStreaming = ({
   const handleStop = () => {
     setIsTyping(false);
     setStreamStartTime(null);
+
+    // 🔧 CORRECTION URGENTE: Stopper réellement le streaming côté backend
+    const activeChatId = messages.find(m => m.role === 'assistant' && !m.content.includes('stopped'))?.chat_id;
+    if (activeChatId) {
+      // Import dynamique pour éviter les dépendances circulaires
+      import('../../../services/bridge').then(({ requestWorker }) => {
+        requestWorker('cancel_chat', { chat_id: activeChatId }, 2000).catch(err => {
+          console.warn('[useChatStreaming] Failed to cancel chat backend:', err);
+        });
+      });
+    }
+
     // Ajouter un message d'interruption à la réponse actuelle
     updateLastMessage(prev => {
       if (prev?.role === 'assistant' && prev.content) {

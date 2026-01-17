@@ -159,6 +159,7 @@ class PromptBuilderService:
         context_files: List[Dict[str, Any]] = None,
         memory_entries: List[Dict[str, Any]] = None,
         repo_context: Optional[Dict[str, Any]] = None,
+        web_context: Optional[str] = None,
         system_rules: Optional[str] = None,
         language: str = "fr",
     ) -> Prompt:
@@ -210,8 +211,17 @@ class PromptBuilderService:
                     "languages": repo_context.get("structure", {}).get("languages", [])
                 }
             ))
-        
-        # 4. Contexte (fichiers)
+
+        # 4. Contexte Web (si fourni)
+        if web_context:
+            web_text = self._format_web_context(web_context)
+            components.append(PromptComponent(
+                type="context",
+                content=web_text,
+                metadata={"type": "web"}
+            ))
+
+        # 5. Contexte (fichiers)
         if context_files:
             context_text = self._format_context(context_files)
             components.append(PromptComponent(
@@ -222,8 +232,8 @@ class PromptBuilderService:
                     "count": len(context_files)
                 }
             ))
-        
-        # 5. Historique de conversation
+
+        # 6. Historique de conversation
         if chat_history:
             for msg in chat_history:
                 role = msg.get("role", "user")
@@ -234,7 +244,7 @@ class PromptBuilderService:
                         metadata={"timestamp": msg.get("timestamp")}
                     ))
         
-        # 6. Message utilisateur actuel
+        # 7. Message utilisateur actuel
         components.append(PromptComponent(
             type="user",
             content=user_message,
@@ -327,7 +337,11 @@ IMPORTANT RULES:
                     parts.append(f"Tools: {', '.join(stack['tools'])}")
         
         return "\n".join(parts)
-    
+
+    def _format_web_context(self, web_context: str) -> str:
+        """Formate le contexte web"""
+        return "=== WEB RESULTS ===\n" + web_context
+
     def _format_context(self, files: List[Dict[str, Any]]) -> str:
         """Formate le contexte fichiers"""
         parts = []

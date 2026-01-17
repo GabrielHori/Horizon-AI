@@ -1,24 +1,37 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import Sidebar from '../components/Sidebar';
 import TopBar from '../components/TopBar';
-import Dashboard from '../pages/Dashboard';
-import AIChatPanel from '../components/AIChatPanel';
-import Settings from '../pages/Settings';
-import FileManager from '../components/FileManager';
-import MemoryManager from '../components/MemoryManager';
-import RemoteAccess from '../pages/RemoteAccess';
-import AnimationDemo from '../pages/AnimationDemo';
 import AnimatedBackground from '../components/AnimatedBackground';
 import { useTheme } from '../contexts/ThemeContext';
 import { PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 
+const Dashboard = lazy(() => import('../pages/Dashboard'));
+const AIChatPanel = lazy(() => import('../components/AIChatPanel'));
+const Settings = lazy(() => import('../pages/Settings'));
+const ModelLibrary = lazy(() => import('../pages/ModelLibrary'));
+const ContextPanel = lazy(() => import('../components/ContextPanel'));
+const ModelManager = lazy(() => import('../components/ModelManager'));
+const MemoryManager = lazy(() => import('../components/MemoryManager'));
+const RemoteAccess = lazy(() => import('../pages/RemoteAccess'));
+const AnimationDemo = lazy(() => import('../pages/AnimationDemo'));
+const SecurityCenter = lazy(() => import('../pages/SecurityCenter'));
+const AdvancedCenter = lazy(() => import('../pages/AdvancedCenter'));
+
 const AppLayout = ({
   activeTab, setActiveTab, systemStats, selectedChatId,
   setSelectedChatId, selectedModel, setSelectedModel,
+  selectedStyle, setSelectedStyle, chatIntent, setChatIntent,
+  prefillPrompt, setPrefillPrompt,
+  modelOverride, setModelOverride,
   isNavOpen, setIsNavOpen, userName, setUserName, language, setLanguage,
   healthStatus
 }) => {
   const { isDarkMode } = useTheme();
+  const loadingFallback = (
+    <div className={`h-full w-full flex items-center justify-center text-xs font-bold ${isDarkMode ? 'text-white/40' : 'text-slate-500'}`}>
+      {language === 'fr' ? 'Chargement...' : 'Loading...'}
+    </div>
+  );
 
   const renderContent = () => {
     const commonProps = { language, isDarkMode, healthStatus };
@@ -29,7 +42,10 @@ const AppLayout = ({
           <Dashboard
             systemStats={systemStats}
             setActiveTab={setActiveTab}
-            selectedModel={selectedModel}
+            selectedStyle={selectedStyle}
+            setSelectedStyle={setSelectedStyle}
+            setChatIntent={setChatIntent}
+            setPrefillPrompt={setPrefillPrompt}
             setSelectedChatId={setSelectedChatId}
             userName={userName}
             {...commonProps}
@@ -40,12 +56,39 @@ const AppLayout = ({
           <AIChatPanel
             selectedModel={selectedModel}
             setSelectedModel={setSelectedModel}
+            selectedStyle={selectedStyle}
+            modelOverride={modelOverride}
+            setModelOverride={setModelOverride}
+            chatIntent={chatIntent}
+            setChatIntent={setChatIntent}
+            prefillPrompt={prefillPrompt}
+            setPrefillPrompt={setPrefillPrompt}
             chatId={selectedChatId}
             setSelectedChatId={setSelectedChatId}
             {...commonProps}
           />
         );
-      case 'files': return <FileManager language={language} {...commonProps} />;
+      case 'security':
+        return (
+          <SecurityCenter
+            language={language}
+            setActiveTab={setActiveTab}
+          />
+        );
+      case 'advanced':
+        return (
+          <AdvancedCenter
+            language={language}
+            setActiveTab={setActiveTab}
+          />
+        );
+      case 'files': return (
+        <div className="h-full p-6 overflow-hidden">
+          <ContextPanel language={language} isDarkMode={isDarkMode} />
+        </div>
+      );
+      case 'library': return <ModelLibrary language={language} systemStats={systemStats} setActiveTab={setActiveTab} />;
+      case 'models': return <ModelManager language={language} {...commonProps} />; // ✅ SPRINT 2: Nouvelle route
       case 'memory': return <MemoryManager language={language} {...commonProps} />;
       case 'remote': return <RemoteAccess language={language} {...commonProps} />;
       case 'animation-demo': return <AnimationDemo />;
@@ -62,7 +105,10 @@ const AppLayout = ({
         <Dashboard
           systemStats={systemStats}
           setActiveTab={setActiveTab}
-          selectedModel={selectedModel}
+          selectedStyle={selectedStyle}
+          setSelectedStyle={setSelectedStyle}
+          setChatIntent={setChatIntent}
+          setPrefillPrompt={setPrefillPrompt}
           setSelectedChatId={setSelectedChatId}
           userName={userName}
           {...commonProps}
@@ -121,12 +167,19 @@ const AppLayout = ({
           activeTab={activeTab}
           selectedModel={selectedModel}
           setSelectedModel={setSelectedModel}
+          selectedStyle={selectedStyle}
+          setSelectedStyle={setSelectedStyle}
+          chatIntent={chatIntent}
+          modelOverride={modelOverride}
+          setModelOverride={setModelOverride}
           userName={userName}
           language={language}
           onToggleSidebar={() => setIsNavOpen(!isNavOpen)}
         />
         <main className="flex-1 overflow-hidden relative">
-          {renderContent()}
+          <Suspense fallback={loadingFallback}>
+            {renderContent()}
+          </Suspense>
         </main>
       </div>
     </div>

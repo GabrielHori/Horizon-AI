@@ -5,9 +5,23 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { requestWorker } from '../../../services/bridge';
+import PermissionService from '../../../services/permission_service';
 
-export const useCloudflaredInstall = (installing, setInstalling, loadStatus) => {
+export const useCloudflaredInstall = (installing, setInstalling, loadStatus, language = 'fr') => {
   const [installProgress, setInstallProgress] = useState(0);
+
+  const ensureRemoteAccessPermission = useCallback(async (actionLabel) => {
+    const hasPermission = await PermissionService.hasPermission('RemoteAccess');
+    if (hasPermission) {
+      return true;
+    }
+    const result = await PermissionService.requestPermission(
+      'RemoteAccess',
+      actionLabel,
+      language === 'fr' ? 'Acces distant' : 'Remote access'
+    );
+    return result === true;
+  }, [language]);
 
   // Polling for installation progress
   useEffect(() => {
@@ -38,6 +52,12 @@ export const useCloudflaredInstall = (installing, setInstalling, loadStatus) => 
     setInstallProgress(0);
 
     try {
+      const allowed = await ensureRemoteAccessPermission(
+        language === 'fr' ? 'Installer cloudflared' : 'Install cloudflared'
+      );
+      if (!allowed) {
+        throw new Error(language === 'fr' ? 'Permission RemoteAccess requise' : 'RemoteAccess permission required');
+      }
       // Start installation
       const result = await requestWorker("tunnel_install_cloudflared");
 
@@ -53,7 +73,7 @@ export const useCloudflaredInstall = (installing, setInstalling, loadStatus) => 
     } finally {
       setInstalling(false);
     }
-  }, [loadStatus, setInstalling]);
+  }, [ensureRemoteAccessPermission, language, loadStatus, setInstalling]);
 
   return {
     installProgress,

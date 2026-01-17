@@ -22,7 +22,7 @@ export const useConversations = (activeModel, activeProjectId = null) => {
       
       // Filtrer par modèle (comportement existant)
       let filtered = activeModel
-        ? all.filter(c => c.model === activeModel || !c.model)
+        ? all.filter(c => c.model === activeModel)
         : all;
       
       // V2.1 Sprint 2.2 : Filtrer par projet actif si fourni

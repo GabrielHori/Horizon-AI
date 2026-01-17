@@ -37,6 +37,7 @@ import {
 } from 'lucide-react';
 import { requestWorker } from '../services/bridge';
 import { useTheme } from '../contexts/ThemeContext';
+import PermissionService from '../services/permission_service';
 
 // Import hooks
 import { useTunnelStatus } from '../components/RemoteAccess/hooks/useTunnelStatus';
@@ -69,9 +70,22 @@ export default function RemoteAccess({ language = 'fr', isDarkMode: propDarkMode
   // Get translations
   const text = translations[language] || translations.en;
 
+  const ensureRemoteAccessPermission = useCallback(async (actionLabel) => {
+    const hasPermission = await PermissionService.hasPermission('RemoteAccess');
+    if (hasPermission) {
+      return true;
+    }
+    const result = await PermissionService.requestPermission(
+      'RemoteAccess',
+      actionLabel,
+      language === 'fr' ? 'Acces distant' : 'Remote access'
+    );
+    return result === true;
+  }, [language]);
+
   // Hooks initialization
   const { status, loading, loadStatus, setError: setStatusError } = useTunnelStatus();
-  const { installProgress, installCloudflared } = useCloudflaredInstall(installing, setInstalling, loadStatus);
+  const { installProgress, installCloudflared } = useCloudflaredInstall(installing, setInstalling, loadStatus, language);
   const {
     currentToken,
     showToken,
@@ -144,6 +158,15 @@ export default function RemoteAccess({ language = 'fr', isDarkMode: propDarkMode
     setError(null);
 
     try {
+      const allowed = await ensureRemoteAccessPermission(
+        status?.tunnel_running
+          ? (language === 'fr' ? 'Desactiver le tunnel' : 'Disable tunnel')
+          : (language === 'fr' ? 'Activer le tunnel' : 'Enable tunnel')
+      );
+      if (!allowed) {
+        setError(language === 'fr' ? 'Permission RemoteAccess requise' : 'RemoteAccess permission required');
+        return;
+      }
       if (status?.tunnel_running) {
         await requestWorker("tunnel_stop");
       } else {
@@ -175,6 +198,13 @@ export default function RemoteAccess({ language = 'fr', isDarkMode: propDarkMode
     setRevokingSession(sessionId);
     
     try {
+      const allowed = await ensureRemoteAccessPermission(
+        language === 'fr' ? 'Revoquer une session' : 'Revoke session'
+      );
+      if (!allowed) {
+        setError(language === 'fr' ? 'Permission RemoteAccess requise' : 'RemoteAccess permission required');
+        return;
+      }
       // Pour l'instant (Sprint 1.2), révoquer = retirer IP de la allowlist
       // Dans une version future, on pourra avoir un vrai système de sessions avec tracking
       const session = sessions.find(s => s.id === sessionId);
@@ -207,13 +237,20 @@ export default function RemoteAccess({ language = 'fr', isDarkMode: propDarkMode
     } finally {
       setRevokingSession(null);
     }
-  }, [sessions, loadSessions, loadStatus, handleError]);
+  }, [ensureRemoteAccessPermission, handleError, language, loadSessions, loadStatus, sessions]);
 
   // Add IP to allowlist
   const addAllowedIp = async () => {
     if (!newIp.trim()) return;
 
     try {
+      const allowed = await ensureRemoteAccessPermission(
+        language === 'fr' ? 'Ajouter une IP a la liste blanche' : 'Add IP to allowlist'
+      );
+      if (!allowed) {
+        setError(language === 'fr' ? 'Permission RemoteAccess requise' : 'RemoteAccess permission required');
+        return;
+      }
       await requestWorker("tunnel_add_allowed_ip", { ip: newIp.trim() });
       setNewIp('');
       await loadStatus();
@@ -226,6 +263,13 @@ export default function RemoteAccess({ language = 'fr', isDarkMode: propDarkMode
   // Remove IP from allowlist
   const removeAllowedIp = async (ip) => {
     try {
+      const allowed = await ensureRemoteAccessPermission(
+        language === 'fr' ? 'Retirer une IP de la liste blanche' : 'Remove IP from allowlist'
+      );
+      if (!allowed) {
+        setError(language === 'fr' ? 'Permission RemoteAccess requise' : 'RemoteAccess permission required');
+        return;
+      }
       await requestWorker("tunnel_remove_allowed_ip", { ip });
       await loadStatus();
       await loadSessions();

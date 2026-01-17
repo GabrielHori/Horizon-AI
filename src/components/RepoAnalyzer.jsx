@@ -20,6 +20,7 @@ import {
   FolderTree
 } from 'lucide-react';
 import { requestWorker } from '../services/bridge';
+import PermissionService from '../services/permission_service';
 import { useTheme } from '../contexts/ThemeContext';
 import { open } from '@tauri-apps/plugin-dialog';
 
@@ -39,6 +40,20 @@ const RepoAnalyzer = ({ language = 'fr', isDarkMode = true }) => {
   });
   const [expandedDirs, setExpandedDirs] = useState(new Set()); // V2: Dossiers développés dans l'arborescence
   const [showTreeView, setShowTreeView] = useState(false); // V2: Mode arborescent
+
+  const ensureRepoPermission = async () => {
+    const hasPermission = await PermissionService.hasPermission('RepoAnalyze');
+    if (hasPermission) {
+      return true;
+    }
+    const granted = await PermissionService.requestPermission(
+      'RepoAnalyze',
+      language === 'fr' ? 'Analyser un repository' : 'Analyze repository',
+      language === 'fr' ? 'Analyse de repository' : 'Repository analysis'
+    );
+    return granted === true;
+  };
+
 
   const text = {
     fr: {
@@ -140,6 +155,12 @@ const RepoAnalyzer = ({ language = 'fr', isDarkMode = true }) => {
     setAnalysis(null);
 
     try {
+      const allowed = await ensureRepoPermission();
+      if (!allowed) {
+        setError(language === 'fr' ? 'Permission RepoAnalyze requise' : 'RepoAnalyze permission required');
+        setAnalyzing(false);
+        return;
+      }
       const response = await requestWorker("analyze_repository", {
         repo_path: repoPath,
         max_depth: 10,

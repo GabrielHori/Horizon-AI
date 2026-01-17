@@ -1,10 +1,18 @@
-from duckduckgo_search import DDGS
 import sys
+try:
+    from duckduckgo_search import DDGS
+except ImportError:
+    DDGS = None
 
 class SearchService:
+    def is_available(self):
+        return DDGS is not None
+
     def search_web(self, query: str, max_results: int = 5):
         """Recherche sur le web et retourne un condensé des résultats."""
         try:
+            if DDGS is None:
+                return "Recherche web indisponible (dependance manquante)."
             print(f"DEBUG: Recherche web pour: {query}", file=sys.stderr)
             with DDGS() as ddgs:
                 results = [r for r in ddgs.text(query, max_results=max_results)]

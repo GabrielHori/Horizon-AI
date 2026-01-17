@@ -7,17 +7,53 @@ import { Plus, MessageSquare, ChevronLeft, ChevronRight, Trash2, Folder, FolderP
 import { useTheme } from '../../../contexts/ThemeContext';
 import { translations } from '../../../constants/translations';
 
+// Sprint 1: Format date relative (Today, Yesterday, short date)
+const toTimestampSeconds = (value) => {
+  if (!value) return null;
+  if (typeof value === 'number') {
+    return value > 1e12 ? Math.floor(value / 1000) : value;
+  }
+  if (typeof value === 'string') {
+    const ms = Date.parse(value);
+    if (!Number.isNaN(ms)) return Math.floor(ms / 1000);
+  }
+  return null;
+};
+
+const formatDate = (value) => {
+  const ts = toTimestampSeconds(value);
+  if (!ts) return '';
+  const now = Date.now() / 1000;
+  const diff = now - ts;
+
+  if (diff < 86400) return 'Today';
+  if (diff < 172800) return 'Yesterday';
+  if (diff < 604800) {
+    const days = Math.floor(diff / 86400);
+    return `${days}d ago`;
+  }
+
+  const date = new Date(ts * 1000);
+  return date.toLocaleDateString('en', { month: 'short', day: 'numeric' });
+};
+
+const formatDateTitle = (value) => {
+  const ts = toTimestampSeconds(value);
+  if (!ts) return '';
+  return new Date(ts * 1000).toLocaleString();
+};
+
 export const ChatSidebar = ({
   isHistoryOpen,
   setIsHistoryOpen,
   conversations,
   activeChatId,
   activeModel,
+  activeStyleLabel,
   language,
   onNewChat,
   onSelectChat,
   onDeleteChat,
-  // Props pour les projets
   projects = [],
   activeProjectId = null,
   onCreateProject,
@@ -27,6 +63,8 @@ export const ChatSidebar = ({
 }) => {
   const { isDarkMode } = useTheme();
   const chatTranslations = translations[language]?.chat || translations.en.chat;
+  const styleLabel = translations[language]?.labels?.style || translations.en.labels?.style || 'Style';
+  const hasActiveStyle = Boolean(activeModel && activeStyleLabel);
 
   return (
     <div
@@ -60,7 +98,7 @@ export const ChatSidebar = ({
             {chatTranslations.database}
           </span>
           <p className="text-[8px] opacity-40 uppercase font-black mt-0.5 italic truncate">
-            {activeModel || (language === 'fr' ? 'Hors ligne' : 'Offline')}
+            {hasActiveStyle ? `${styleLabel}: ${activeStyleLabel}` : (language === 'fr' ? 'Hors ligne' : 'Offline')}
           </p>
         </div>
 
@@ -73,9 +111,7 @@ export const ChatSidebar = ({
             {onCreateProject && (
               <button
                 onClick={onCreateProject}
-                className={`p-1.5 rounded-lg transition-all hover:scale-110 active:scale-95 ${
-                  isDarkMode ? 'text-gray-400 hover:bg-white/10' : 'text-gray-500 hover:bg-gray-100'
-                }`}
+                className={`p-1.5 rounded-lg transition-all hover:scale-110 active:scale-95 ${isDarkMode ? 'text-gray-400 hover:bg-white/10' : 'text-gray-500 hover:bg-gray-100'}`}
                 title={language === 'fr' ? 'Nouveau projet' : 'New project'}
               >
                 <FolderPlus size={10} />
@@ -111,7 +147,6 @@ export const ChatSidebar = ({
                     <span className="truncate flex-1">{project.name}</span>
                   </div>
 
-                  {/* V2.1 : Afficher repos count et conversations count */}
                   {(project.repos?.length > 0 || project.conversationCount > 0) && (
                     <div className="flex items-center gap-1.5 ml-3.5 mt-0.5">
                       {project.repos?.length > 0 && (
@@ -145,7 +180,7 @@ export const ChatSidebar = ({
           )}
         </div>
 
-        {/* Séparateur */}
+        {/* Separator */}
         <div className={`h-px mb-3 ${isDarkMode ? 'bg-white/5' : 'bg-gray-200'}`} />
 
         {/* Section Conversations */}
@@ -195,11 +230,22 @@ export const ChatSidebar = ({
                   <span className="truncate flex-1">{conv.title || 'Session'}</span>
                 </div>
 
-                {conv.model && (
-                  <span className="block text-[7px] opacity-50 ml-5 truncate mt-0.5">
-                    {conv.model}
-                  </span>
-                )}
+                <div className="ml-5 mt-1.5 flex flex-wrap items-center gap-1.5">
+                  {conv.message_count > 0 && (
+                    <span className="text-[6px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-black uppercase">
+                      {conv.message_count} msg
+                    </span>
+                  )}
+
+                  {(conv.updated_at || conv.created_at) && (
+                    <span
+                      className="text-[6px] px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 font-black uppercase"
+                      title={formatDateTitle(conv.updated_at || conv.created_at)}
+                    >
+                      {formatDate(conv.updated_at || conv.created_at)}
+                    </span>
+                  )}
+                </div>
 
                 <button
                   onClick={(e) => {
@@ -217,11 +263,9 @@ export const ChatSidebar = ({
         </div>
       </div>
 
-      {/* Barre prismatique avec bouton toggle intégré au centre (desktop) */}
+      {/* Prism bar with toggle button (desktop) */}
       <div className="absolute top-1/2 -translate-y-1/2 right-0 z-50 hidden sm:flex sm:items-center sm:justify-center">
-        {/* Conteneur de la barre avec bouton centré */}
         <div className="relative w-[4px] h-20 rounded-full">
-          {/* Barre prismatique */}
           <div
             className="absolute inset-0 rounded-full"
             style={{
@@ -229,21 +273,20 @@ export const ChatSidebar = ({
               boxShadow: '0 0 10px rgba(255,200,100,0.5)',
             }}
           />
-          
-          {/* Bouton Toggle centré sur la barre - Design Horizon AI (Gris métallique) */}
+
           <button
             onClick={() => setIsHistoryOpen(v => !v)}
             className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 rounded-[14px] border transition-all hover:scale-110 active:scale-95 shadow-lg flex items-center justify-center z-10"
             style={{
-              background: isDarkMode 
+              background: isDarkMode
                 ? 'linear-gradient(135deg, rgba(42, 42, 42, 0.95) 0%, rgba(26, 26, 26, 0.95) 100%)'
                 : 'linear-gradient(135deg, rgba(245, 245, 245, 0.95) 0%, rgba(229, 229, 229, 0.95) 100%)',
               border: isDarkMode ? '1px solid rgba(255,255,255,0.15)' : '1px solid rgba(0,0,0,0.15)',
-              boxShadow: isDarkMode 
+              boxShadow: isDarkMode
                 ? '0 4px 15px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.08)'
                 : '0 4px 15px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.9)',
             }}
-            title={language === 'fr' ? 'Réduire/Agrandir l\'historique' : 'Toggle history'}
+            title={language === 'fr' ? "Reduire/Agrandir l'historique" : 'Toggle history'}
           >
             {isHistoryOpen ? (
               <ChevronLeft size={16} className={isDarkMode ? 'text-gray-300' : 'text-gray-600'} strokeWidth={2.5} />
@@ -254,17 +297,17 @@ export const ChatSidebar = ({
         </div>
       </div>
 
-      {/* Toggle mobile - Bouton flottant */}
+      {/* Toggle mobile */}
       {!isHistoryOpen && (
         <button
           onClick={() => setIsHistoryOpen(v => !v)}
           className="sm:hidden fixed bottom-4 right-4 z-50 p-3 rounded-[18px] border shadow-lg transition-all hover:scale-110 active:scale-95"
           style={{
-            background: isDarkMode 
+            background: isDarkMode
               ? 'linear-gradient(135deg, rgba(42, 42, 42, 0.95) 0%, rgba(26, 26, 26, 0.95) 100%)'
               : 'linear-gradient(135deg, rgba(245, 245, 245, 0.95) 0%, rgba(229, 229, 229, 0.95) 100%)',
             border: isDarkMode ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.1)',
-            boxShadow: isDarkMode 
+            boxShadow: isDarkMode
               ? '0 4px 15px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)'
               : '0 4px 15px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.8)',
           }}

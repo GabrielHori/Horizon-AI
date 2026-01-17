@@ -85,7 +85,7 @@ const ContextPanel = ({ language = 'fr', isDarkMode = true }) => {
       confirmReadTitle: "Confirmation de lecture",
       confirmReadMessage: "Vous êtes sur le point de lire le fichier complet. Cette action nécessite une permission explicite.",
       confirm: "Confirmer",
-      cancel: "Annuler",
+
       permissionRequired: "Permission requise",
       tokenInfo: "Token de confirmation (expire dans 5 minutes)"
     },
@@ -124,7 +124,7 @@ const ContextPanel = ({ language = 'fr', isDarkMode = true }) => {
       confirmReadTitle: "Read confirmation",
       confirmReadMessage: "You are about to read the complete file. This action requires explicit permission.",
       confirm: "Confirm",
-      cancel: "Cancel",
+
       permissionRequired: "Permission required",
       tokenInfo: "Confirmation token (expires in 5 minutes)"
     }
@@ -197,7 +197,7 @@ const ContextPanel = ({ language = 'fr', isDarkMode = true }) => {
 
       // 1. Toujours commencer par preview (pas de permission requise)
       const result = await ContextService.getFilePreview(filePath, 50);
-      
+
       // Le résultat contient {preview: {...}, confirmation_token: "..."}
       setSelectedFile(filePath);
       setPreviewData(result);
@@ -452,7 +452,7 @@ const ContextPanel = ({ language = 'fr', isDarkMode = true }) => {
                   {fullContent ? text.fileContent : 'Preview (50 premières lignes)'}
                 </span>
               </div>
-              
+
               {loadingFullContent ? (
                 <div className="flex items-center justify-center py-8">
                   <RefreshCw className={`w-5 h-5 animate-spin ${darkMode ? 'text-blue-400' : 'text-blue-600'}`} />
@@ -499,7 +499,7 @@ const ContextPanel = ({ language = 'fr', isDarkMode = true }) => {
                         <div className="flex items-center gap-2">
                           <Info size={14} className="text-blue-500" />
                           <span className={`text-xs ${darkMode ? 'text-blue-400' : 'text-blue-700'}`}>
-                            {language === 'fr' 
+                            {language === 'fr'
                               ? `${preview?.line_count || previewData?.preview?.line_count || 0} lignes au total. Preview des 50 premières.`
                               : `${preview?.line_count || previewData?.preview?.line_count || 0} total lines. Preview of first 50.`
                             }
@@ -508,11 +508,10 @@ const ContextPanel = ({ language = 'fr', isDarkMode = true }) => {
                         <button
                           onClick={handleRequestFullContent}
                           disabled={!confirmationToken}
-                          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-colors disabled:opacity-50 ${
-                            darkMode
+                          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-colors disabled:opacity-50 ${darkMode
                               ? 'bg-blue-600 hover:bg-blue-700 text-white'
                               : 'bg-blue-500 hover:bg-blue-600 text-white'
-                          }`}
+                            }`}
                         >
                           <Download size={14} />
                           {text.readFullFile}
@@ -783,11 +782,10 @@ const ContextPanel = ({ language = 'fr', isDarkMode = true }) => {
               <button
                 onClick={handleConfirmRead}
                 disabled={loadingFullContent || !confirmationToken}
-                className={`flex-1 py-3 rounded-xl text-sm font-bold uppercase tracking-widest transition-all disabled:opacity-50 ${
-                  darkMode
+                className={`flex-1 py-3 rounded-xl text-sm font-bold uppercase tracking-widest transition-all disabled:opacity-50 ${darkMode
                     ? 'bg-blue-600 hover:bg-blue-700 text-white'
                     : 'bg-blue-500 hover:bg-blue-600 text-white'
-                }`}
+                  }`}
               >
                 {loadingFullContent ? (
                   <div className="flex items-center justify-center gap-2">

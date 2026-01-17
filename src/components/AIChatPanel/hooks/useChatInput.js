@@ -20,6 +20,8 @@ export const useChatInput = ({
   setIsTyping,
   selectedRepo,
   repoAnalysis,
+  useWeb,
+  webAvailable,
   onMessageSent,
   onChatIdChanged,
   onPermissionRequestDetected  // V2.1 Phase 3 : Callback pour demande permission détectée
@@ -146,7 +148,8 @@ export const useChatInput = ({
         chat_id: activeChatId || null,
         project_id: activeProjectId || null,  // V2.1 : Lier la conversation au projet
         language: language || "en",
-        repo_context: repoContext
+        repo_context: repoContext,
+        ...(useWeb && webAvailable ? { web_query: userMessage, web_max_results: 5 } : {})
       });
 
       if (res?.chat_id && !activeChatId) {

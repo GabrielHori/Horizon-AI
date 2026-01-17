@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { requestWorker } from '../services/bridge';
 import { useTheme } from '../contexts/ThemeContext';
+import PermissionService from '../services/permission_service';
 
 const MemoryManager = ({ language = 'fr', isDarkMode = true }) => {
   const { isDarkMode: themeDarkMode } = useTheme();
@@ -45,6 +46,8 @@ const MemoryManager = ({ language = 'fr', isDarkMode = true }) => {
   const [deletingKey, setDeletingKey] = useState(null); // V2: Clé à supprimer
   const [viewingEntry, setViewingEntry] = useState(null); // V2: Entrée à visualiser
   const [entryFullValue, setEntryFullValue] = useState(null); // V2: Valeur complète de l'entrée visualisée
+  const [showClearSessionModal, setShowClearSessionModal] = useState(false);
+  const [isClearingSession, setIsClearingSession] = useState(false);
 
   const text = {
     fr: {
@@ -145,11 +148,30 @@ const MemoryManager = ({ language = 'fr', isDarkMode = true }) => {
 
   const t = text[language] || text.en;
 
+  const ensureMemoryPermission = async (actionLabel) => {
+    const hasPermission = await PermissionService.hasPermission('MemoryAccess');
+    if (hasPermission) {
+      return true;
+    }
+    const result = await PermissionService.requestPermission(
+      'MemoryAccess',
+      actionLabel,
+      language === 'fr' ? 'Accès mémoire' : 'Memory access'
+    );
+    return result === true;
+  };
+
   // Charger les entrées
   const loadEntries = async () => {
     setLoading(true);
     setError(null);
     try {
+      const allowed = await ensureMemoryPermission(`${t.memoryType}: ${activeTab}`);
+      if (!allowed) {
+        setError(language === 'fr' ? 'Permission mémoire requise' : 'Memory permission required');
+        setLoading(false);
+        return;
+      }
       const response = await requestWorker("memory_list", {
         memory_type: activeTab,
         project_id: activeTab === 'project' ? projectId : undefined
@@ -170,6 +192,11 @@ const MemoryManager = ({ language = 'fr', isDarkMode = true }) => {
   // Sauvegarder une entrée
   const saveEntry = async (key, value, metadata = null) => {
     try {
+      const allowed = await ensureMemoryPermission(`${t.addEntry}: ${key}`);
+      if (!allowed) {
+        setError(language === 'fr' ? 'Permission mémoire requise' : 'Memory permission required');
+        return false;
+      }
       let parsedMetadata = null;
       if (metadata && metadata.trim()) {
         try {
@@ -216,6 +243,13 @@ const MemoryManager = ({ language = 'fr', isDarkMode = true }) => {
     if (!deletingKey) return;
 
     try {
+      const allowed = await ensureMemoryPermission(`${t.deleteEntryConfirm}: ${deletingKey}`);
+      if (!allowed) {
+        setError(language === 'fr' ? 'Permission mémoire requise' : 'Memory permission required');
+        setShowDeleteModal(false);
+        setDeletingKey(null);
+        return;
+      }
       const response = await requestWorker("memory_delete", {
         memory_type: activeTab,
         key: deletingKey,
@@ -253,12 +287,16 @@ const MemoryManager = ({ language = 'fr', isDarkMode = true }) => {
   };
 
   // Vider la session
-  const clearSession = async () => {
-    if (!window.confirm(t.clearSessionConfirm)) {
-      return;
-    }
 
+  // Vider la session
+  const clearSession = async () => {
+    setIsClearingSession(true);
     try {
+      const allowed = await ensureMemoryPermission(t.clearSession);
+      if (!allowed) {
+        setError(language === 'fr' ? 'Permission memoire requise' : 'Memory permission required');
+        return;
+      }
       const response = await requestWorker("memory_clear_session");
       if (response?.success) {
         await loadEntries();
@@ -267,6 +305,9 @@ const MemoryManager = ({ language = 'fr', isDarkMode = true }) => {
       }
     } catch (err) {
       setError(err.message);
+    } finally {
+      setIsClearingSession(false);
+      setShowClearSessionModal(false);
     }
   };
 
@@ -278,6 +319,11 @@ const MemoryManager = ({ language = 'fr', isDarkMode = true }) => {
     }
 
     try {
+      const allowed = await ensureMemoryPermission(t.cryptoTitle);
+      if (!allowed) {
+        setError(language === 'fr' ? 'Permission mémoire requise' : 'Memory permission required');
+        return;
+      }
       const response = await requestWorker("memory_set_crypto_password", {
         password: cryptoPassword
       });
@@ -297,6 +343,11 @@ const MemoryManager = ({ language = 'fr', isDarkMode = true }) => {
   // Charger la valeur complète d'une entrée
   const loadEntryValue = async (key) => {
     try {
+      const allowed = await ensureMemoryPermission(`${t.viewEntry}: ${key}`);
+      if (!allowed) {
+        setError(language === 'fr' ? 'Permission mémoire requise' : 'Memory permission required');
+        return null;
+      }
       const response = await requestWorker("memory_get", {
         memory_type: activeTab,
         key,
@@ -474,7 +525,7 @@ const MemoryManager = ({ language = 'fr', isDarkMode = true }) => {
           </button>
           {activeTab === 'session' && (
             <button
-              onClick={clearSession}
+              onClick={() => setShowClearSessionModal(true)}
               className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase transition-all ${darkMode
                   ? 'bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400'
                   : 'bg-red-50 hover:bg-red-100 border border-red-200 text-red-600'
@@ -794,6 +845,42 @@ const MemoryManager = ({ language = 'fr', isDarkMode = true }) => {
         </div>
       )}
 
+
+
+      {/* Modal confirmation vider la session */}
+      {showClearSessionModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm">
+          <div className={`w-full max-w-md p-6 rounded-2xl border ${darkMode ? 'bg-[#0A0A0A] border-white/10' : 'bg-white border-slate-200'}`}>
+            <div className="flex items-center gap-2 mb-4">
+              <AlertCircle className="w-5 h-5 text-red-500" />
+              <h2 className="text-xl font-black uppercase tracking-wider">{t.clearSession}</h2>
+            </div>
+            <div className={`p-4 rounded-xl mb-6 ${darkMode ? 'bg-red-500/10 border border-red-500/20' : 'bg-red-50 border border-red-200'}`}>
+              <p className={`text-sm ${darkMode ? 'text-red-400' : 'text-red-700'}`}>
+                {t.clearSessionConfirm}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowClearSessionModal(false)}
+                className={`flex-1 px-4 py-2 rounded-lg text-xs font-bold uppercase ${darkMode
+                  ? 'bg-white/10 hover:bg-white/20 text-white'
+                  : 'bg-slate-100 hover:bg-slate-200 text-slate-900'
+                }`}
+              >
+                {t.cancel}
+              </button>
+              <button
+                onClick={clearSession}
+                disabled={isClearingSession}
+                className="flex-1 px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-bold uppercase disabled:opacity-60"
+              >
+                {isClearingSession ? t.loading : t.clearSession}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* V2: Modal visualisation entrée complète */}
       {viewingEntry && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm">

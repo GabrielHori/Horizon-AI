@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
+import { requestWorker } from './bridge';
 
 /**
  * Permission Service - Gestion des permissions côté frontend (V2.1 Phase 3 : Support scope)
@@ -13,11 +14,20 @@ class PermissionService {
      */
     static async requestPermission(permission, context, reason) {
         try {
-            return await invoke('request_permission', {
+            const result = await invoke('request_permission', {
                 permission,
                 context,
                 reason
             });
+            const granted = result?.success ?? result === true;
+            if (granted) {
+                try {
+                    await requestWorker('grant_permission', { permission });
+                } catch (error) {
+                    console.warn('Failed to sync permission with worker:', error);
+                }
+            }
+            return granted;
         } catch (error) {
             console.error('Failed to request permission:', error);
             return false;
@@ -35,13 +45,22 @@ class PermissionService {
      */
     static async requestPermissionWithScope(permission, context, scope = 'global', duration_minutes = null, project_id = null) {
         try {
-            return await invoke('request_permission_with_scope', {
+            const result = await invoke('request_permission_with_scope', {
                 permission,
                 context,
                 scope,
                 duration_minutes: duration_minutes || undefined,
                 project_id: project_id || undefined
             });
+            const granted = result?.success ?? result === true;
+            if (granted) {
+                try {
+                    await requestWorker('grant_permission', { permission });
+                } catch (error) {
+                    console.warn('Failed to sync permission with worker:', error);
+                }
+            }
+            return granted;
         } catch (error) {
             console.error('Failed to request permission with scope:', error);
             return false;
@@ -55,7 +74,8 @@ class PermissionService {
      */
     static async hasPermission(permission) {
         try {
-            return await invoke('has_permission', { permission });
+            const result = await invoke('has_permission', { permission });
+            return result?.has_permission ?? result?.hasPermission ?? result === true;
         } catch (error) {
             console.error('Failed to check permission:', error);
             return false;
@@ -70,10 +90,11 @@ class PermissionService {
      */
     static async hasPermissionWithContext(permission, project_id = null) {
         try {
-            return await invoke('has_permission_with_context', { 
+            const result = await invoke('has_permission_with_context', { 
                 permission,
                 project_id: project_id || undefined
             });
+            return result?.has_permission ?? result?.hasPermission ?? result === true;
         } catch (error) {
             console.error('Failed to check permission with context:', error);
             return false;
@@ -126,7 +147,11 @@ class PermissionService {
      */
     static async getParanoMode() {
         try {
-            return await invoke('get_parano_mode');
+            const result = await invoke('get_parano_mode');
+            if (typeof result === 'boolean') {
+                return result;
+            }
+            return result?.parano_mode ?? result?.paranoMode ?? true;
         } catch (error) {
             console.error('Failed to get parano mode:', error);
             return true; // Par défaut, mode parano activé
