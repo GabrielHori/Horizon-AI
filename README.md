@@ -1,72 +1,197 @@
-# Horizon AI
+# 🚀 Horizon AI
 
-Assistant IA local (React/Vite + Tauri/Rust + worker Python). 100% local, aucune donnee envoyee.
+**Horizon AI** is a modern desktop application that provides a **unified interface for multiple AI models**, both **local and cloud-based**, with a strong focus on **performance, modularity, and user control**.
 
-![Horizon AI Icon](src-tauri/icons/app-icon.png)
+The project is built to be **extensible by design**, allowing new AI providers, models, and execution backends to be added without breaking the existing architecture.
 
-## Fonctionnalites cles
-- Chat local avec modeles Ollama (streaming, historique, multi-modeles)
-- Gestion de modeles (installation/suppression), monitoring systeme, onboarding
-- Remote access via tunnel securise (token + rate limiting)
-- Gestion des permissions, licensing, notifications de securite
+---
 
-## Installation rapide (Windows)
-- Telecharger l'installer : [Releases](https://github.com/GabrielHori/Horizon-AI/releases/latest)
-- L'installer gere : installation app + Ollama + modele par defaut (~2GB)
+## ✨ Key Features
 
-## Documentation
-- Index : `docs/README.md`
-- Architecture : `docs/ARCHITECTURE.md`
-- Developpement : `docs/DEVELOPMENT.md`
-- Contribuer : `docs/CONTRIBUTING.md`
-- Troubleshooting : `docs/TROUBLESHOOTING.md`
-- README locaux : `src/README.md`, `src/features/README.md`, `src-tauri/README.md`, `worker/README.md`
+- 🧠 **Multi-provider AI support**
+  - Ollama (local GGUF models)
+  - AirLLM (VRAM-optimized Hugging Face models)
+  - Cloud APIs (Claude, OpenAI – optional)
+- 🔁 **Unified provider router**
+- 🖥️ **Desktop application**
+- ⚙️ **Manual provider activation**
+- 📦 **Model selection & lifecycle management**
+- 🚦 **Real-time provider status**
+- 🧩 **Modular & scalable architecture**
+- 💾 **Persistent configuration**
+- 🔒 **Offline-first** with local models
 
-## Architecture (resume)
-React UI -> commandes Tauri (Rust) -> worker Python via stdin/stdout JSON -> Ollama (HTTP local). Tauri gere la fenetre, l'installation Ollama et le bridge Python; le worker porte la logique metier (chat history, repo analyzer, monitoring, tunnels, permissions).
+---
 
-## Project Structure (cible)
+## 🧱 Tech Stack
+
+### Frontend
+- ⚛️ React
+- ⚡ Vite
+- 🎨 TailwindCSS
+- 🖥️ Tauri
+
+### Backend
+- 🧵 Worker-based backend (Node / TypeScript)
+- 🔌 Provider routing system
+- 🐍 Python sidecar (AirLLM)
+
+### AI / Providers
+- Ollama → Local GGUF models
+- AirLLM → Hugging Face models with optimized VRAM usage
+- Cloud APIs → Claude / OpenAI (optional)
+
+---
+
+## 🏗️ Project Architecture
+
 ```
-horizon-ai/
-- docs/         # Documentation du projet
-- public/       # Assets statiques
-- src/          # Frontend React/Vite
-  - app/        # bootstrap, router, providers, styles
-  - features/   # code par fonctionnalite (chat, models, permissions, remote-access, monitoring, settings, licensing, repo-analyzer, onboarding, layout)
-  - shared/     # composants/utilitaires communs
-- src-tauri/    # Shell desktop Tauri/Rust, commandes et licensing
-- worker/       # Worker Python (services, IPC, tests)
-- screenshots/  # Captures d'ecran
+Horizon AI
+│
+├── frontend/               # React + Tailwind UI
+│
+├── backend/
+│   ├── worker/             # Core backend worker
+│   │   ├── providers/
+│   │   ├── managers/
+│   │   └── router/
+│   │
+│   └── sidecars/
+│       └── airllm_sidecar.py
+│
+├── screenshots/            # Application screenshots
+│
+└── config.json             # Persistent configuration
 ```
 
-## Developpement
+---
+
+## 🧠 Supported Providers
+
+### ✅ Ollama
+- Local GGUF models
+- Fast startup
+- Low latency
+- Ideal for daily usage
+
+### ✅ AirLLM
+- Manually enabled
+- VRAM-efficient loading
+- User-selected models
+- Start / stop on demand
+- Single-instance execution (GPU safety)
+
+### ☁️ Cloud Providers (Optional)
+- Claude
+- OpenAI
+- Any OpenAI-compatible API
+
+---
+
+## ⚙️ Provider Lifecycle
+
+Each provider can be:
+- Enabled / Disabled
+- Loaded / Unloaded
+- Selected at runtime
+
+### Provider States
+- `OFF`
+- `LOADING`
+- `READY`
+- `ERROR`
+
+---
+
+## 🖥️ Application Screenshots
+
+> Place your screenshots inside the `screenshots/` folder at the project root.
+
+### 🏠 Main Interface
+```md
+![Main Interface](screenshots/main-ui.png)
+```
+
+### 🔌 Chat Interface
+```md
+![Provider Selection](screenshots/providers.png)
+```
+
+### 🧠 Model Selection (AirLLM)
+```md
+![AirLLM Model Selection](screenshots/airllm-models.png)
+```
+
+### ⏳ Model Loading
+```md
+![Model Loading](screenshots/airllm-loading.png)
+```
+
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+- Node.js
+- Python 3.9+
+- Ollama installed
+- CUDA-compatible GPU recommended (for AirLLM)
+
+### Install dependencies
 ```bash
-# Dependances
 npm install
-python -m venv .venv && .venv/Scripts/activate
-pip install -r worker/requirements.txt
-
-# Dev
-npm run tauri dev        # front + tauri + worker
-npm run vite-dev         # front seul
-
-# Build
-python -m PyInstaller --clean worker/backend.spec
-copy dist/backend.exe src-tauri/binaries/backend-x86_64-pc-windows-msvc.exe
-npm run tauri:build
 ```
 
-## Tests
+### Run in development
 ```bash
-npm run lint             # ESLint
-pytest worker/tests      # Python
-cargo check              # Rust
+npm run dev
 ```
 
-## Troubleshooting (express)
-- Ollama ne repond pas : verifier `OLLAMA_HOST`, redemarrer Ollama, voir `worker/services/ollama_service.py`.
-- Build Tauri casse : verifier binaire backend dans `src-tauri/binaries/`, relancer `cargo check`.
-- Performance UI : activer `shouldReduceMotion` pour couper les animations.
+### Build desktop application
+```bash
+npm run build
+```
 
-## License
-MIT License - voir `LICENSE`.
+---
+
+## 🧠 Design Philosophy
+
+- Explicit user control
+- No forced providers
+- No hidden background services
+- Clear model lifecycle
+- Clean separation of concerns
+- Extensible without refactoring
+
+---
+
+## 🛣️ Roadmap
+
+- Streaming responses
+- Advanced routing rules
+- Conversation memory
+- Plugin system
+- Model benchmarking
+- Additional providers
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome.
+
+- Keep changes modular
+- Do not break existing providers
+- Follow existing project structure
+- Document new providers
+
+---
+
+## 🧑‍💻 Author
+
+**Gabriel (Horizon)**
+
+---
+
+> Horizon AI — *One interface. Multiple intelligences.*

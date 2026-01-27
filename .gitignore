@@ -171,7 +171,6 @@ dmypy.json
 # ========================================
 logs/
 data/
-screenshots/
 tmp/
 .tmp/
 *.log
