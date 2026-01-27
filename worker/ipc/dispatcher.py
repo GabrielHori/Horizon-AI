@@ -7,6 +7,7 @@ import ollama
 try:
     from services.monitoring_service import monitoring_service
     from services.ollama_service import ollama_service
+    from services.airllm_manager import airllm_manager
     from services.chat_history_service import chat_history_service
     from services.system_service import system_service
     from services.tunnel_service import tunnel_service
@@ -17,7 +18,9 @@ try:
     from services.project_service import project_service  # V2.1 : Service projets
     from services.path_validator import path_validator  # V2.1 : Validation path traversal
     from services.input_validator import input_validator  # V2.1 Phase 3 : Validation d'entrée stricte
-    from services.rate_limiter import rate_limiter  # V2.1 Phase 3 : Rate limiting pour sécurité
+    from services.rate_limiter import rate_limiter
+    from services.licensing_service import licensing_service
+    from services.feature_gates import feature_is_enabled  # V2.1 Phase 3 : Rate limiting pour sécurité
     from ipc.permission_guard import permission_guard  # V2.1 : Defense-in-depth permissions
 except ImportError as e:
     print(f"[Dispatcher Error] Services import failed: {str(e)}", file=sys.stderr)
@@ -25,6 +28,7 @@ except ImportError as e:
     search_service = None
     input_validator = None
     rate_limiter = None
+    licensing_service = None
 
 class CommandDispatcher:
     def __init__(self, ipc=None):
@@ -91,6 +95,8 @@ class CommandDispatcher:
                         cmd
                     )
         
+        ent_status = licensing_service.get_status_snapshot() if licensing_service else None
+
         # --- HEALTH CHECK ---
         if cmd == "health_check":
             return {"status": "healthy"}
@@ -107,6 +113,10 @@ class CommandDispatcher:
         # --- SHUTDOWN (fermeture propre) ---
         if cmd == "shutdown":
             print("🛑 Worker shutdown requested", file=sys.stderr)
+            try:
+                airllm_manager.disable()
+            except Exception:
+                pass
             return {"status": "shutdown_acknowledged"}
         
         # --- SYSTÈME & MONITORING ---
@@ -241,6 +251,25 @@ class CommandDispatcher:
         if cmd == "delete_model":
             return ollama_service.delete_model(payload.get("name"))
 
+        # --- AIRLLM (Python sidecar) ---
+        if cmd == "airllm_list_models":
+            return airllm_manager.list_models()
+
+        if cmd == "airllm_status":
+            return airllm_manager.get_status()
+
+        if cmd == "airllm_enable":
+            return airllm_manager.enable(payload.get("model"))
+
+        if cmd == "airllm_reload":
+            return airllm_manager.reload(payload.get("model"))
+
+        if cmd == "airllm_disable":
+            return airllm_manager.disable()
+
+        if cmd == "airllm_set_active_model":
+            return airllm_manager.reload(payload.get("model"))
+
         # --- CHAT & HISTORIQUE (REQUIS POUR AIChatPanel.jsx) ---
         if cmd == "list_conversations":
             # Renvoie directement la liste pour match avec AIChatPanel
@@ -306,6 +335,9 @@ class CommandDispatcher:
 
         if cmd == "chat":
             model = payload.get("model")
+            provider = payload.get("provider", "ollama")
+            max_tokens = payload.get("max_tokens", 256)
+            temperature = payload.get("temperature", 0.7)
             prompt = payload.get("prompt")
             chat_id = payload.get("chat_id") # Peut être None
             project_id = payload.get("project_id")  # V2.1 : ID du projet lié
@@ -432,26 +464,53 @@ class CommandDispatcher:
                         "prompt_dict": prompt_obj.to_dict()
                     }
                     
-                    # Appel à Ollama avec l'historique complet
-                    for chunk in ollama.chat(model=model, messages=messages_for_ollama, stream=True):
-                        # 🔧 CORRECTION: Vérifier si l'utilisateur a annulé
-                        if self.cancel_streaming:
-                            print(f"[Dispatcher] Streaming cancelled by user for chat_id: {active_chat_id}", file=sys.stderr)
-                            yield {"event": "cancelled", "chat_id": active_chat_id, "message": "Streaming stopped by user"}
-                            break
-                        
-                        token = chunk['message']['content']
-                        full_response += token
-                        # On renvoie le token au frontend via l'IPC
-                        yield {"event": "token", "data": token, "chat_id": active_chat_id}
+                    target_model = model if provider == "ollama" else f"airllm:{model}"
+                    if provider == "airllm":
+                        result = airllm_manager.generate(
+                            prompt_string,
+                            {"max_tokens": max_tokens, "temperature": temperature},
+                        )
                     
-                    # 3. Une fois fini, on sauvegarde la réponse de l'IA (avec project_id pour conserver le lien)
-                    chat_history_service.save_message(
-                        active_chat_id, "assistant", full_response, 
-                        model=model,
-                        project_id=project_id  # V2.1 : Conserver le lien projet
-                    )
-                    yield {"event": "done", "chat_id": active_chat_id}
+                        if not result.get("ok"):
+                            raise Exception(result.get("error") or "AirLLM generation failed")
+                    
+                        generated = result.get("text") or ""
+                        chunk_size = 80
+                        for i in range(0, len(generated), chunk_size):
+                            if self.cancel_streaming:
+                                break
+                            token = generated[i:i+chunk_size]
+                            full_response += token
+                            yield {"event": "token", "data": token, "chat_id": active_chat_id}
+                    
+                        chat_history_service.save_message(
+                            active_chat_id, "assistant", full_response, 
+                            model=target_model,
+                            project_id=project_id
+                        )
+                        yield {"event": "done", "chat_id": active_chat_id}
+                    
+                    else:
+                        # Appel à Ollama avec l'historique complet
+                        for chunk in ollama.chat(model=model, messages=messages_for_ollama, stream=True):
+                            # 🔧 CORRECTION: Vérifier si l'utilisateur a annulé
+                            if self.cancel_streaming:
+                                print(f"[Dispatcher] Streaming cancelled by user for chat_id: {active_chat_id}", file=sys.stderr)
+                                yield {"event": "cancelled", "chat_id": active_chat_id, "message": "Streaming stopped by user"}
+                                break
+                    
+                            token = chunk['message']['content']
+                            full_response += token
+                            # On renvoie le token au frontend via l'IPC
+                            yield {"event": "token", "data": token, "chat_id": active_chat_id}
+                    
+                        # 3. Une fois fini, on sauvegarde la réponse de l'IA (avec project_id pour conserver le lien)
+                        chat_history_service.save_message(
+                            active_chat_id, "assistant", full_response, 
+                            model=model,
+                            project_id=project_id  # V2.1 : Conserver le lien projet
+                        )
+                        yield {"event": "done", "chat_id": active_chat_id}
                 
                 except Exception as e:
                     monitoring_service.add_log(f"CHAT ERROR: {str(e)}")
@@ -469,6 +528,11 @@ class CommandDispatcher:
         # ============================================
         
         # Vérifie si cloudflared est installé
+        if cmd in ["tunnel_start", "tunnel_generate_token", "tunnel_add_allowed_ip", "tunnel_remove_allowed_ip", "tunnel_get_qr"]:
+            if licensing_service and "feature_is_enabled" in globals() and feature_is_enabled:
+                if not feature_is_enabled("remote_access", ent_status or {}):
+                    return self._create_error_response("LICENSE_REQUIRED", "Remote access requires Pro plan", cmd)
+
         if cmd == "tunnel_check_cloudflared":
             return tunnel_service.check_cloudflared_installed()
         
@@ -592,6 +656,19 @@ class CommandDispatcher:
             if not token:
                 return {"success": False, "error": "Token is required"}
             return tunnel_service.set_custom_token(token)
+
+        # Configure un tunnel nommé pour un domaine personnalisé
+        if cmd == "tunnel_set_named_tunnel":
+            enabled = payload.get("enabled", True)
+            custom_domain = payload.get("custom_domain", "")
+            tunnel_name = payload.get("tunnel_name", "")
+            credentials_file = payload.get("credentials_file", "")
+            return tunnel_service.set_named_tunnel_config(
+                enabled=enabled,
+                custom_domain=custom_domain,
+                tunnel_name=tunnel_name,
+                credentials_file=credentials_file
+            )
 
         # Récupère les données pour le QR code avec token intégré
         if cmd == "tunnel_get_qr_with_token":

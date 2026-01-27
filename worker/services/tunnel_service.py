@@ -25,6 +25,7 @@ import time
 import urllib.request
 import zipfile
 import platform
+import re
 from pathlib import Path
 from datetime import datetime, timedelta
 from typing import Dict, Any, Optional, List
@@ -69,6 +70,10 @@ class TunnelConfig:
     rate_limit_window: int = 60  # Fenêtre en secondes
     allowed_ips: List[str] = None  # Liste blanche IP (vide = tous autorisés)
     http_port: int = 8765  # Port local pour le serveur HTTP
+    use_named_tunnel: bool = False
+    custom_domain: str = ""
+    tunnel_name: str = ""
+    credentials_file: str = ""
     
     def __post_init__(self):
         if self.allowed_ips is None:
@@ -242,6 +247,98 @@ class TunnelService:
         except Exception as e:
             print(f"[TunnelService] Error saving config: {e}", file=sys.stderr)
             return False
+
+    def _normalize_domain(self, domain: str) -> str:
+        """Normalize and sanitize a custom domain (strip scheme and slashes)."""
+        if not domain:
+            return ""
+        normalized = domain.strip()
+        normalized = normalized.replace("https://", "").replace("http://", "")
+        normalized = normalized.strip().strip("/")
+        return normalized.lower()
+
+    def _validate_named_tunnel_config(self, custom_domain: str, tunnel_name: str, credentials_file: str) -> Dict[str, Any]:
+        """Validate named tunnel settings for a custom domain."""
+        domain = self._normalize_domain(custom_domain)
+        name = (tunnel_name or "").strip()
+        creds = (credentials_file or "").strip()
+
+        if not domain or not name or not creds:
+            return {
+                "valid": False,
+                "error": "custom_domain, tunnel_name, and credentials_file are required"
+            }
+
+        if not re.match(r"^[A-Za-z0-9.-]+$", domain) or "." not in domain:
+            return {
+                "valid": False,
+                "error": "custom_domain must look like a valid hostname (example: ai.example.com)"
+            }
+
+        credentials_path = Path(creds).expanduser()
+        if not credentials_path.exists():
+            return {
+                "valid": False,
+                "error": "credentials_file does not exist"
+            }
+        if not credentials_path.is_file():
+            return {
+                "valid": False,
+                "error": "credentials_file must be a file"
+            }
+
+        return {
+            "valid": True,
+            "domain": domain,
+            "tunnel_name": name,
+            "credentials_file": credentials_path
+        }
+
+    def _build_named_tunnel_config(self, http_port: int) -> Path:
+        """Build a cloudflared config file for a named tunnel."""
+        config_path = self.config_dir / "cloudflared_named_tunnel.yml"
+        credentials_value = self.config.credentials_file.replace("'", "''")
+        config_text = (
+            f"tunnel: {self.config.tunnel_name}\n"
+            f"credentials-file: '{credentials_value}'\n"
+            "ingress:\n"
+            f"  - hostname: {self.config.custom_domain}\n"
+            f"    service: http://localhost:{http_port}\n"
+            "  - service: http_status:404\n"
+        )
+        config_path.write_text(config_text, encoding="utf-8")
+        return config_path
+
+    def set_named_tunnel_config(self, enabled: bool, custom_domain: str = "", tunnel_name: str = "", credentials_file: str = "") -> Dict[str, Any]:
+        """Enable or disable a named tunnel configuration."""
+        if not enabled:
+            self.config.use_named_tunnel = False
+            if custom_domain is not None:
+                self.config.custom_domain = self._normalize_domain(custom_domain)
+            if tunnel_name is not None:
+                self.config.tunnel_name = (tunnel_name or "").strip()
+            if credentials_file is not None:
+                self.config.credentials_file = (credentials_file or "").strip()
+            self._save_config()
+            return {"success": True, "enabled": False}
+
+        validation = self._validate_named_tunnel_config(custom_domain, tunnel_name, credentials_file)
+        if not validation.get("valid"):
+            return {"success": False, "error": validation.get("error")}
+
+        self.config.use_named_tunnel = True
+        self.config.custom_domain = validation["domain"]
+        self.config.tunnel_name = validation["tunnel_name"]
+        self.config.credentials_file = str(validation["credentials_file"])
+        self._save_config()
+
+        return {
+            "success": True,
+            "enabled": True,
+            "custom_domain": self.config.custom_domain,
+            "tunnel_name": self.config.tunnel_name,
+            "credentials_file": self.config.credentials_file
+        }
     
     def _get_download_url(self) -> Optional[str]:
         """Retourne l'URL de téléchargement selon le système"""
@@ -759,14 +856,42 @@ class TunnelService:
             self.config.http_port = http_port
             self._save_config()
             
-            # Démarrer cloudflared en mode Quick Tunnel
-            # Le tunnel pointe vers notre serveur HTTP local
-            cmd = [
-                cloudflared_path,
-                "tunnel",
-                "--url", f"http://localhost:{http_port}",
-                "--no-autoupdate"
-            ]
+            if self.config.use_named_tunnel:
+                validation = self._validate_named_tunnel_config(
+                    self.config.custom_domain,
+                    self.config.tunnel_name,
+                    self.config.credentials_file
+                )
+                if not validation.get("valid"):
+                    return {"success": False, "error": validation.get("error")}
+
+                self.config.custom_domain = validation["domain"]
+                self.config.tunnel_name = validation["tunnel_name"]
+                self.config.credentials_file = str(validation["credentials_file"])
+                config_path = self._build_named_tunnel_config(http_port)
+
+                # Démarrer cloudflared en mode tunnel nommé
+                cmd = [
+                    cloudflared_path,
+                    "tunnel",
+                    "--config", str(config_path),
+                    "--no-autoupdate",
+                    "run",
+                    self.config.tunnel_name
+                ]
+
+                self.tunnel_url = f"https://{self.config.custom_domain}"
+                self.config.tunnel_url = self.tunnel_url
+                self._save_config()
+            else:
+                # Démarrer cloudflared en mode Quick Tunnel
+                # Le tunnel pointe vers notre serveur HTTP local
+                cmd = [
+                    cloudflared_path,
+                    "tunnel",
+                    "--url", f"http://localhost:{http_port}",
+                    "--no-autoupdate"
+                ]
             
             # Créer le processus
             self.tunnel_process = subprocess.Popen(
@@ -867,6 +992,10 @@ class TunnelService:
             "http_port": self.config.http_port,
             "token_configured": bool(self.config.auth_token),
             "allowed_ips": self.config.allowed_ips,
+            "use_named_tunnel": self.config.use_named_tunnel,
+            "custom_domain": self.config.custom_domain,
+            "tunnel_name": self.config.tunnel_name,
+            "credentials_file": self.config.credentials_file,
             "rate_limit": {
                 "max_requests": self.config.rate_limit_requests,
                 "window_seconds": self.config.rate_limit_window

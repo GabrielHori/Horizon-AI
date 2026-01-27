@@ -88,6 +88,7 @@ storybook-static/
 .cursor/
 .cursorrules
 *.cursor/
+.agent/
 
 # JetBrains IDEs
 *.iml
@@ -170,6 +171,9 @@ dmypy.json
 # ========================================
 logs/
 data/
+screenshots/
+tmp/
+.tmp/
 *.log
 *.log.*
 npm-debug.log*

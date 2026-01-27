@@ -13,6 +13,7 @@ import { detectPermissionRequest } from '../../../services/permission_detector';
 
 export const useChatInput = ({
   activeModel,
+  activeProvider = 'ollama',
   activeChatId,
   activeProjectId,  // V2.1 : ID du projet actif
   language,
@@ -144,6 +145,7 @@ export const useChatInput = ({
 
       const res = await requestWorker("chat", {
         model: activeModel,
+        provider: activeProvider || 'ollama',
         prompt: userMessage,
         chat_id: activeChatId || null,
         project_id: activeProjectId || null,  // V2.1 : Lier la conversation au projet

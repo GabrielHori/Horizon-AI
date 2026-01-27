@@ -5,6 +5,7 @@ mod permission_commands;
 mod context_reader;
 mod context_reader_commands;
 mod window_manager;
+mod licensing;
 
 use python_bridge::PythonBridge;
 use tauri::{Manager, Wry, AppHandle, RunEvent};
@@ -13,6 +14,7 @@ use std::process::Command;
 use std::sync::Mutex;
 use permission_manager::PermissionManager;
 use context_reader::ContextReader;
+use licensing::store::LicenseStore;
 
 #[cfg(windows)]
 use std::os::windows::process::CommandExt;
@@ -140,6 +142,7 @@ pub fn run() {
             app.manage(bridge);
             app.manage(Mutex::new(permission_manager));
             app.manage(Mutex::new(context_reader));
+            app.manage(LicenseStore::new());
 
             // ✅ DÉMARRER OLLAMA AU LANCEMENT (si installé)
             if ollama_installer::is_ollama_installed() {
@@ -187,7 +190,10 @@ pub fn run() {
             window_manager::close_chat_window,
             window_manager::update_chat_window_title,
             window_manager::move_window_to_screen,
-            window_manager::get_available_screens
+            window_manager::get_available_screens,
+            licensing::license_status,
+            licensing::license_activate,
+            licensing::license_refresh
         ])
         .build(tauri::generate_context!())
         .expect("Erreur lors du lancement de l'application Horizon AI");

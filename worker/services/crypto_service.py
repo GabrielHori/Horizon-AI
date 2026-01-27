@@ -46,6 +46,32 @@ class CryptoService:
         # Clé maître (dérivée du mot de passe utilisateur)
         self._master_key: Optional[bytes] = None
     
+    def _get_or_create_salt(self) -> bytes:
+        """
+        Récupère le salt existant ou en crée un nouveau.
+        Le salt est stocké dans un fichier local pour persistance.
+        
+        Returns:
+            Salt de 16 bytes
+        """
+        salt_file = self.keys_dir / "user_salt.bin"
+        
+        if salt_file.exists():
+            # Lire le salt existant
+            with open(salt_file, 'rb') as f:
+                salt = f.read()
+                if len(salt) == 16:
+                    return salt
+        
+        # Générer un nouveau salt aléatoire (16 bytes = 128 bits)
+        salt = os.urandom(16)
+        
+        # Sauvegarder le salt
+        with open(salt_file, 'wb') as f:
+            f.write(salt)
+        
+        return salt
+    
     def set_password(self, password: str) -> bool:
         """
         Définit le mot de passe utilisateur et dérive la clé maître
@@ -59,8 +85,10 @@ class CryptoService:
         if not password:
             return False
         
-        # Dériver la clé maître avec PBKDF2
-        salt = b'horizon_ai_salt_v2'  # Salt fixe (peut être amélioré avec un salt unique par utilisateur)
+        # Récupérer ou créer le salt unique pour cet utilisateur
+        salt = self._get_or_create_salt()
+        
+        # Dériver la clé maître avec PBKDF2 et le salt unique
         kdf = PBKDF2HMAC(
             algorithm=hashes.SHA256(),
             length=32,  # 256 bits

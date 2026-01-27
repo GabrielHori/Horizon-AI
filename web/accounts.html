@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Horizon AI - Accounts</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container header-inner">
+        <div class="logo">Horizon AI</div>
+        <nav class="nav">
+          <a href="index.html">Home</a>
+          <a href="features.html">Features</a>
+          <a href="pricing.html">Pricing</a>
+          <a href="security.html">Security Center</a>
+        </nav>
+        <div class="nav-cta">
+          <a class="btn btn-ghost" href="pricing.html">Pricing</a>
+          <a class="btn btn-primary" href="#">Download</a>
+          <button class="account-trigger" type="button" data-account-trigger aria-label="Account menu">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="8" r="3.5" />
+              <path d="M20 21c0-3.3-3.6-6-8-6s-8 2.7-8 6" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div class="container hero-grid">
+          <div class="hero-copy reveal">
+            <p class="kicker">Accounts</p>
+            <h1>Local identities, controlled access.</h1>
+            <p class="subhead">
+              Manage local and remote accounts with explicit scopes. Tokens, roles, and device access
+              are tracked locally so you stay in control.
+            </p>
+          </div>
+          <div class="hero-panel reveal" style="--delay: 0.1s">
+            <div class="status-grid">
+              <div class="status-item">
+                <strong>Local profiles</strong>
+                <span>Enabled</span>
+              </div>
+              <div class="status-item">
+                <strong>Remote accounts</strong>
+                <span>Token gated</span>
+              </div>
+              <div class="status-item">
+                <strong>Role scopes</strong>
+                <span>Configurable</span>
+              </div>
+              <div class="status-item">
+                <strong>Audit</strong>
+                <span>Local logs</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="container">
+          <div class="section-head">
+            <h2>Account workspace</h2>
+            <p>Provision local or remote accounts with scopes that match your security policy.</p>
+          </div>
+          <div class="grid grid-2">
+            <div class="panel reveal">
+              <h3>Create account</h3>
+              <form class="form-grid">
+                <div class="form-row">
+                  <div class="form-field">
+                    <label for="account-name">Display name</label>
+                    <input class="input" id="account-name" name="account-name" type="text" placeholder="Local Operator" />
+                  </div>
+                  <div class="form-field">
+                    <label for="account-role">Role</label>
+                    <select class="input" id="account-role" name="account-role">
+                      <option>Admin</option>
+                      <option>Operator</option>
+                      <option>Observer</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="form-row">
+                  <div class="form-field">
+                    <label for="account-email">Email</label>
+                    <input class="input" id="account-email" name="account-email" type="email" placeholder="name@domain" />
+                  </div>
+                  <div class="form-field">
+                    <label for="account-scope">Access scope</label>
+                    <select class="input" id="account-scope" name="account-scope">
+                      <option>Local only</option>
+                      <option>Remote access</option>
+                      <option>Remote read-only</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="form-field">
+                  <label for="account-notes">Notes</label>
+                  <textarea class="input" id="account-notes" name="account-notes" rows="3" placeholder="Device notes or token purpose"></textarea>
+                </div>
+                <div class="form-actions">
+                  <button class="btn btn-primary" type="button">Add account</button>
+                  <button class="btn btn-ghost btn-small" type="button">Generate token</button>
+                  <span class="pill">Supabase pending</span>
+                </div>
+              </form>
+            </div>
+            <div class="panel reveal" style="--delay: 0.05s">
+              <h3>Account directory</h3>
+              <ul class="account-list">
+                <li class="account-item">
+                  <div class="account-details">
+                    <strong>Local Admin</strong>
+                    <span class="account-meta">admin@localhost - Local only</span>
+                    <span class="pill">Owner</span>
+                  </div>
+                  <div class="account-actions">
+                    <span class="pill">Active</span>
+                    <a class="btn btn-ghost btn-small" href="#">Manage</a>
+                  </div>
+                </li>
+                <li class="account-item">
+                  <div class="account-details">
+                    <strong>Remote Operator</strong>
+                    <span class="account-meta">ops@horizon.ai - Remote access</span>
+                    <span class="pill">Token bound</span>
+                  </div>
+                  <div class="account-actions">
+                    <span class="pill">Rate limited</span>
+                    <a class="btn btn-ghost btn-small" href="#">Rotate</a>
+                  </div>
+                </li>
+                <li class="account-item">
+                  <div class="account-details">
+                    <strong>Security Observer</strong>
+                    <span class="account-meta">audit@horizon.ai - Read only</span>
+                    <span class="pill">Audit</span>
+                  </div>
+                  <div class="account-actions">
+                    <span class="pill">No tokens</span>
+                    <a class="btn btn-ghost btn-small" href="#">Review</a>
+                  </div>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="container grid grid-2">
+          <div class="callout reveal">
+            <h3>Separation from local usage</h3>
+            <p>
+              Local mode works without accounts. Only remote access and multi-device workflows
+              require account provisioning.
+            </p>
+          </div>
+          <div class="callout reveal" style="--delay: 0.05s">
+            <h3>Database ready</h3>
+            <p>
+              This workspace is ready to connect to Supabase or any local auth store when you are
+              ready to wire it up.
+            </p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="container">
+        <span>Horizon AI accounts are local-first, auditable, and opt-in.</span>
+      </div>
+    </footer>
+
+    <div class="modal" data-account-modal aria-hidden="true">
+      <div class="modal-overlay" data-account-close></div>
+      <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="account-title">
+        <div class="modal-header">
+          <h2 class="modal-title" id="account-title">Account</h2>
+          <button class="modal-close" type="button" data-account-close aria-label="Close">
+            X
+          </button>
+        </div>
+        <form class="form-grid">
+          <div class="form-field">
+            <label for="account-email">Email</label>
+            <input class="input" id="account-email" name="account-email" type="email" placeholder="name@domain" />
+          </div>
+          <div class="form-field">
+            <label for="account-password">Password</label>
+            <input class="input" id="account-password" name="account-password" type="password" placeholder="********" />
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-primary" type="button">Se connecter</button>
+          </div>
+        </form>
+        <div class="modal-links">
+          <a href="#">Mot de passe oublie</a>
+          <a href="#">Creer un compte</a>
+        </div>
+      </div>
+    </div>
+    <script src="account-modal.js"></script>
+  </body>
+</html>

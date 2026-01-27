@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Horizon AI - Security Center</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container header-inner">
+        <div class="logo">Horizon AI</div>
+        <nav class="nav">
+          <a href="index.html">Home</a>
+          <a href="features.html">Features</a>
+          <a href="pricing.html">Pricing</a>
+          <a class="is-active" href="security.html">Security Center</a>
+        </nav>
+        <div class="nav-cta">
+          <a class="btn btn-ghost" href="pricing.html">Pricing</a>
+          <a class="btn btn-primary" href="#">Download</a>
+          <button class="account-trigger" type="button" data-account-trigger aria-label="Account menu">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="8" r="3.5" />
+              <path d="M20 21c0-3.3-3.6-6-8-6s-8 2.7-8 6" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div class="container hero-grid">
+          <div class="hero-copy reveal">
+            <p class="kicker">Security Center</p>
+            <h1>Security that respects local control.</h1>
+            <p class="subhead">
+              Horizon AI keeps local usage offline. Remote access is an optional layer protected by
+              token-based authentication, rate limiting, and explicit device approval.
+            </p>
+          </div>
+          <div class="hero-panel reveal" style="--delay: 0.1s">
+            <div class="status-grid">
+              <div class="status-item">
+                <strong>Local mode</strong>
+                <span>Offline by default</span>
+              </div>
+              <div class="status-item">
+                <strong>Tokens</strong>
+                <span>User-generated</span>
+              </div>
+              <div class="status-item">
+                <strong>Allowlist</strong>
+                <span>Configurable</span>
+              </div>
+              <div class="status-item">
+                <strong>Audit trail</strong>
+                <span>Local logs</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="container grid grid-2">
+          <div class="feature-block reveal">
+            <h3>Token-based authentication</h3>
+            <div class="feature-details">
+              <div>
+                <h4>What it does</h4>
+                <p>Issues scoped tokens for remote access and per-device authorization.</p>
+              </div>
+              <div>
+                <h4>Why it matters</h4>
+                <p>You decide which devices can reach your local models and when.</p>
+              </div>
+              <div>
+                <h4>Privacy stance</h4>
+                <p>Tokens are generated and stored locally. You can revoke them instantly.</p>
+              </div>
+            </div>
+          </div>
+          <div class="feature-block reveal" style="--delay: 0.05s">
+            <h3>Secure remote access boundary</h3>
+            <div class="feature-details">
+              <div>
+                <h4>What it does</h4>
+                <p>Creates a secure tunnel for remote access without exposing local ports.</p>
+              </div>
+              <div>
+                <h4>Why it matters</h4>
+                <p>Remote access stays isolated from local-only workflows.</p>
+              </div>
+              <div>
+                <h4>Privacy stance</h4>
+                <p>Inference still runs locally; only authorized requests traverse the tunnel.</p>
+              </div>
+            </div>
+          </div>
+          <div class="feature-block reveal">
+            <h3>Device management</h3>
+            <div class="feature-details">
+              <div>
+                <h4>What it does</h4>
+                <p>Lists connected devices, tokens, and access history in one panel.</p>
+              </div>
+              <div>
+                <h4>Why it matters</h4>
+                <p>You can audit access and disable devices without downtime.</p>
+              </div>
+              <div>
+                <h4>Privacy stance</h4>
+                <p>Device metadata is stored locally with no third-party telemetry.</p>
+              </div>
+            </div>
+          </div>
+          <div class="feature-block reveal" style="--delay: 0.05s">
+            <h3>Rate limiting and IP allowlist</h3>
+            <div class="feature-details">
+              <div>
+                <h4>What it does</h4>
+                <p>Enforces per-token limits and restricts access by trusted IP ranges.</p>
+              </div>
+              <div>
+                <h4>Why it matters</h4>
+                <p>Reduces exposure and keeps local resources protected.</p>
+              </div>
+              <div>
+                <h4>Privacy stance</h4>
+                <p>Rules are enforced locally with clear visibility and control.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="container grid grid-2">
+          <div class="callout reveal">
+            <h3>Clear separation of concerns</h3>
+            <p>
+              Local use never depends on cloud services. Remote access is a discrete, optional layer
+              that can be enabled or disabled at any time.
+            </p>
+          </div>
+          <div class="callout reveal" style="--delay: 0.05s">
+            <h3>Account access</h3>
+            <p>
+              Use the account icon in the top right to sign in, reset passwords, or create a new
+              account. Supabase wiring can plug in when you are ready.
+            </p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="container">
+        <span>Horizon AI keeps security local, explicit, and under your control.</span>
+      </div>
+    </footer>
+
+    <div class="modal" data-account-modal aria-hidden="true">
+      <div class="modal-overlay" data-account-close></div>
+      <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="account-title">
+        <div class="modal-header">
+          <h2 class="modal-title" id="account-title">Account</h2>
+          <button class="modal-close" type="button" data-account-close aria-label="Close">
+            X
+          </button>
+        </div>
+        <form class="form-grid">
+          <div class="form-field">
+            <label for="account-email">Email</label>
+            <input class="input" id="account-email" name="account-email" type="email" placeholder="name@domain" />
+          </div>
+          <div class="form-field">
+            <label for="account-password">Password</label>
+            <input class="input" id="account-password" name="account-password" type="password" placeholder="********" />
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-primary" type="button">Se connecter</button>
+          </div>
+        </form>
+        <div class="modal-links">
+          <a href="#">Mot de passe oublie</a>
+          <a href="#">Creer un compte</a>
+        </div>
+      </div>
+    </div>
+    <script src="account-modal.js"></script>
+  </body>
+</html>

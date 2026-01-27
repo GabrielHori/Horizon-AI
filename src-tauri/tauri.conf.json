@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Horizon AI",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "identifier": "com.horizon.launcher",
   "build": {
     "frontendDist": "../dist",
@@ -25,7 +25,7 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' http://localhost:* http://127.0.0.1:* https://api.github.com; worker-src 'self' blob:; frame-src 'none'"
     }
   },
   "bundle": {

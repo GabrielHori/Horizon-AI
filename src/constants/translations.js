@@ -10,7 +10,8 @@ export const translations = {
       memory: "MEMORY",
       remote: "REMOTE ACCESS",
       settings: "SETTINGS",
-      models: "MODELS"
+      models: "MODELS",
+      license: "LICENSE"
     },
 
     topbar: {
@@ -296,7 +297,8 @@ export const translations = {
         memory: "MEMOIRE",
         remote: "ACCES AUTRE APPAREIL",
         settings: "PARAMETRES",
-        models: "MODELES"
+        models: "MODELES",
+        license: "LICENCE"
       },
 
         topbar: {

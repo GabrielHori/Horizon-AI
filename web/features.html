@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Horizon AI - Features</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container header-inner">
+        <div class="logo">Horizon AI</div>
+        <nav class="nav">
+          <a href="index.html">Home</a>
+          <a class="is-active" href="features.html">Features</a>
+          <a href="pricing.html">Pricing</a>
+          <a href="security.html">Security Center</a>
+        </nav>
+        <div class="nav-cta">
+          <a class="btn btn-ghost" href="pricing.html">Pricing</a>
+          <a class="btn btn-primary" href="#">Download</a>
+          <button class="account-trigger" type="button" data-account-trigger aria-label="Account menu">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="8" r="3.5" />
+              <path d="M20 21c0-3.3-3.6-6-8-6s-8 2.7-8 6" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div class="container hero-grid">
+          <div class="hero-copy reveal">
+            <p class="kicker">Features</p>
+            <h1>Designed for local execution.</h1>
+            <p class="subhead">
+              Horizon AI exposes the full local stack with transparency. Every feature is built to
+              keep data on-device, even when you enable remote access.
+            </p>
+          </div>
+          <div class="hero-panel reveal" style="--delay: 0.1s">
+            <div class="status-grid">
+              <div class="status-item">
+                <strong>Local Models</strong>
+                <span>Installed</span>
+              </div>
+              <div class="status-item">
+                <strong>Cloud Dependency</strong>
+                <span>None</span>
+              </div>
+              <div class="status-item">
+                <strong>Telemetry</strong>
+                <span>Disabled</span>
+              </div>
+              <div class="status-item">
+                <strong>Remote Access</strong>
+                <span>Token-gated</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="container grid grid-2">
+          <div class="feature-block reveal">
+            <h3>Local AI chat with streaming responses</h3>
+            <div class="feature-details">
+              <div>
+                <h4>What it does</h4>
+                <p>Runs inference locally with streaming output for real-time feedback.</p>
+              </div>
+              <div>
+                <h4>Why it matters</h4>
+                <p>Low-latency responses without waiting on remote servers.</p>
+              </div>
+              <div>
+                <h4>Privacy stance</h4>
+                <p>No prompts leave your machine. You control all local logs.</p>
+              </div>
+            </div>
+          </div>
+          <div class="feature-block reveal" style="--delay: 0.05s">
+            <h3>Local history and storage</h3>
+            <div class="feature-details">
+              <div>
+                <h4>What it does</h4>
+                <p>Stores conversations locally with configurable retention and export.</p>
+              </div>
+              <div>
+                <h4>Why it matters</h4>
+                <p>Preserves context without relying on external databases.</p>
+              </div>
+              <div>
+                <h4>Privacy stance</h4>
+                <p>All data stays in your file system. No telemetry by default.</p>
+              </div>
+            </div>
+          </div>
+          <div class="feature-block reveal">
+            <h3>Model management</h3>
+            <div class="feature-details">
+              <div>
+                <h4>What it does</h4>
+                <p>Install, delete, and switch models from a dedicated library panel.</p>
+              </div>
+              <div>
+                <h4>Why it matters</h4>
+                <p>Stay in control of model versions and disk usage.</p>
+              </div>
+              <div>
+                <h4>Privacy stance</h4>
+                <p>Models are stored locally; you decide when to download or remove them.</p>
+              </div>
+            </div>
+          </div>
+          <div class="feature-block reveal" style="--delay: 0.05s">
+            <h3>GPU acceleration with monitoring</h3>
+            <div class="feature-details">
+              <div>
+                <h4>What it does</h4>
+                <p>CUDA acceleration with live CPU, RAM, and VRAM telemetry.</p>
+              </div>
+              <div>
+                <h4>Why it matters</h4>
+                <p>Maximize throughput while keeping hardware usage visible.</p>
+              </div>
+              <div>
+                <h4>Privacy stance</h4>
+                <p>All monitoring runs locally with no external reporting.</p>
+              </div>
+            </div>
+          </div>
+          <div class="feature-block reveal">
+            <h3>Secure remote access</h3>
+            <div class="feature-details">
+              <div>
+                <h4>What it does</h4>
+                <p>Token-based remote access for devices you explicitly authorize.</p>
+              </div>
+              <div>
+                <h4>Why it matters</h4>
+                <p>Use Horizon AI beyond your workstation without exposing ports.</p>
+              </div>
+              <div>
+                <h4>Privacy stance</h4>
+                <p>Remote access is opt-in and isolated from local-only workflows.</p>
+              </div>
+            </div>
+          </div>
+          <div class="feature-block reveal" style="--delay: 0.05s">
+            <h3>Security controls</h3>
+            <div class="feature-details">
+              <div>
+                <h4>What it does</h4>
+                <p>Rate limits, IP allowlist, and token rotation controls.</p>
+              </div>
+              <div>
+                <h4>Why it matters</h4>
+                <p>Maintain a hardened perimeter even with remote access enabled.</p>
+              </div>
+              <div>
+                <h4>Privacy stance</h4>
+                <p>Security policy lives on-device and requires local approval.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="container grid grid-2">
+          <div class="callout reveal">
+            <h3>Local-first architecture</h3>
+            <p>
+              Horizon AI separates local usage from remote access. Local mode stays offline,
+              with no account required and no forced network dependency.
+            </p>
+          </div>
+          <div class="callout reveal" style="--delay: 0.05s">
+            <h3>Transparent by default</h3>
+            <p>
+              The system is built for technical inspection: storage paths, model management,
+              and security rules are visible and configurable.
+            </p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="container">
+        <span>Horizon AI - Local-first, offline-capable, and built for control.</span>
+      </div>
+    </footer>
+
+    <div class="modal" data-account-modal aria-hidden="true">
+      <div class="modal-overlay" data-account-close></div>
+      <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="account-title">
+        <div class="modal-header">
+          <h2 class="modal-title" id="account-title">Account</h2>
+          <button class="modal-close" type="button" data-account-close aria-label="Close">
+            X
+          </button>
+        </div>
+        <form class="form-grid">
+          <div class="form-field">
+            <label for="account-email">Email</label>
+            <input class="input" id="account-email" name="account-email" type="email" placeholder="name@domain" />
+          </div>
+          <div class="form-field">
+            <label for="account-password">Password</label>
+            <input class="input" id="account-password" name="account-password" type="password" placeholder="********" />
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-primary" type="button">Se connecter</button>
+          </div>
+        </form>
+        <div class="modal-links">
+          <a href="#">Mot de passe oublie</a>
+          <a href="#">Creer un compte</a>
+        </div>
+      </div>
+    </div>
+    <script src="account-modal.js"></script>
+  </body>
+</html>

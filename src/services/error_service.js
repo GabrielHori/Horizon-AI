@@ -106,7 +106,7 @@ export function createUserFriendlyError(error, context = '', language = 'fr') {
     code: error?.code || 'UNKNOWN',
     timestamp: error?.timestamp || new Date().toISOString(),
     canRetry,
-    originalError: process.env.NODE_ENV === 'development' ? error : undefined,
+    originalError: logger.isDev() ? error : undefined,
     actions: [
       { label: msg.retry, action: 'retry', primary: true },
       { label: msg.dismiss, action: 'dismiss', primary: false }
@@ -131,8 +131,8 @@ export function handleError(error, setError, context = '', language = 'fr') {
   setError(userError);
 
   // Log technique en développement
-  if (process.env.NODE_ENV === 'development') {
-    console.error(`[ErrorService] ${context}:`, error);
+  if (logger.isDev()) {
+    logger.error(`Error in ${context}:`, error);
   }
 }
 
@@ -192,8 +192,8 @@ export function getUserMessage(error, language = 'fr') {
   return createUserFriendlyError(error, '', language).userMessage;
 }
 
-// 🛡️ STABILISATION: Wrapper safeRequestWorker avec gestion automatique erreurs + Toast
 import { requestWorker } from './bridge';
+import { logger } from './logger';
 
 let showToastFn = null;
 
@@ -206,10 +206,10 @@ function getToast() {
     } catch (e) {
       console.warn('[ErrorService] Toast not available, falling back to console');
       showToastFn = {
-        success: (msg) => console.log('[SUCCESS]', msg),
-        error: (msg) => console.error('[ERROR]', msg),
-        warning: (msg) => console.warn('[WARNING]', msg),
-        info: (msg) => console.info('[INFO]', msg)
+        success: (msg) => logger.info('[SUCCESS]', msg),
+        error: (msg) => logger.error('[ERROR]', msg),
+        warning: (msg) => logger.warn('[WARNING]', msg),
+        info: (msg) => logger.info('[INFO]', msg)
       };
     }
   }
@@ -260,8 +260,8 @@ export async function safeRequestWorker(cmd, payload = {}, options = {}) {
       }
 
       // Logger en dev
-      if (process.env.NODE_ENV === 'development') {
-        console.error(`[safeRequestWorker] Error for ${cmd}:`, result);
+      if (logger.isDev()) {
+        logger.error(`safeRequestWorker error for ${cmd}:`, result);
       }
 
       return result;
@@ -275,7 +275,7 @@ export async function safeRequestWorker(cmd, payload = {}, options = {}) {
     return result;
 
   } catch (error) {
-    console.error(`[safeRequestWorker] Exception for ${cmd}:`, error);
+    logger.error(`safeRequestWorker exception for ${cmd}:`, error);
 
     const message = errorMessage || error.message || `Unexpected error: ${cmd}`;
 

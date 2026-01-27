@@ -62,6 +62,7 @@ class PermissionGuard:
         "tunnel_validate_token": "RemoteAccess",
         "tunnel_validate_custom_token": "RemoteAccess",
         "tunnel_set_custom_token": "RemoteAccess",
+        "tunnel_set_named_tunnel": "RemoteAccess",
         "tunnel_get_qr_with_token": "RemoteAccess",
         "http_start": "RemoteAccess",
         "http_stop": "RemoteAccess",
@@ -112,6 +113,12 @@ class PermissionGuard:
         "projects_delete",
         "projects_remove_repo",
         "projects_get_or_create_orphan",
+        "airllm_list_models",
+        "airllm_status",
+        "airllm_enable",
+        "airllm_reload",
+        "airllm_disable",
+        "airllm_set_active_model",
     }
 
     def __init__(self):

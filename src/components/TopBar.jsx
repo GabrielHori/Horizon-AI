@@ -11,8 +11,9 @@ import { AI_STYLES, DEFAULT_STYLE_ID, resolveModelForStyle, getModelsForStyle } 
  * Design: Gris métallique chromé, accents prismatiques
  * Compatible mode jour/nuit
  */
-const TopBar = ({ activeTab, selectedModel, setSelectedModel, selectedStyle, setSelectedStyle, userName, language, chatIntent, isCompact = false, onToggleSidebar, modelOverride, setModelOverride }) => {
+const TopBar = ({ activeTab, selectedModel, setSelectedModel, selectedProvider, setSelectedProvider, selectedStyle, setSelectedStyle, userName, language, chatIntent, isCompact = false, onToggleSidebar, modelOverride, setModelOverride }) => {
   const [models, setModels] = useState([]);
+  const [airllmStatus, setAirllmStatus] = useState(null);
   const [isStyleOpen, setIsStyleOpen] = useState(false);
   const [isModelOpen, setIsModelOpen] = useState(false);
   const styleDropdownRef = useRef(null);
@@ -22,13 +23,18 @@ const TopBar = ({ activeTab, selectedModel, setSelectedModel, selectedStyle, set
   const labels = t.labels || translations.en.labels;
   const showSession = activeTab === 'chat' && !isCompact;
   const autoModelValue = '__auto__';
-  const hasModels = models.length > 0;
+  const airllmReady = airllmStatus?.status === "READY";
+  const hasModels = models.length > 0 || airllmReady;
   const intentLabel = chatIntent?.title || (language === 'fr' ? 'Libre' : 'Free');
   const intentDesc = chatIntent?.desc || (language === 'fr' ? 'Mode libre' : 'Free mode');
-  const recommendedModel = resolveModelForStyle(models, selectedStyle);
+  const ollamaModels = models.filter((m) => !m?.provider || m.provider === "ollama");
+  const airllmModels = models.filter((m) => m?.provider === "airllm");
+  const recommendedModel = resolveModelForStyle(ollamaModels, selectedStyle);
   const recommendedModelName = recommendedModel?.name || null;
   const modelDisplayLabel = modelOverride
-    ? (selectedModel || (language === 'fr' ? 'Aucun modele' : 'No model'))
+    ? (selectedModel
+      ? `${selectedModel}${selectedProvider === 'airllm' ? ' · AirLLM' : ''}`
+      : (language === 'fr' ? 'Aucun modele' : 'No model'))
     : (recommendedModelName || (language === 'fr' ? 'Auto' : 'Auto'));
   const recommendedBadge = language === 'fr' ? 'Recommande' : 'Suggested';
 
@@ -55,16 +61,19 @@ const TopBar = ({ activeTab, selectedModel, setSelectedModel, selectedStyle, set
         setModelOverride(false);
       }
     }
-    const resolved = resolveModelForStyle(availableModels, targetStyle);
+    const autoPool = (availableModels || []).filter((m) => !m?.provider || m.provider === 'ollama');
+    const resolved = resolveModelForStyle(autoPool, targetStyle);
 
     if (resolved?.name) {
       if (resolved.name !== selectedModel) {
         setSelectedModel(resolved.name);
+        setSelectedProvider?.(resolved.provider || 'ollama');
       }
     } else if (availableModels.length === 0 && selectedModel) {
       setSelectedModel(null);
+      setSelectedProvider?.('ollama');
     }
-  }, [selectedModel, setSelectedModel, modelOverride, setModelOverride]);
+  }, [selectedModel, setSelectedModel, modelOverride, setModelOverride, setSelectedProvider]);
 
   const handleModelChange = (valueOrEvent) => {
     const value = typeof valueOrEvent === 'string'
@@ -76,22 +85,25 @@ const TopBar = ({ activeTab, selectedModel, setSelectedModel, selectedStyle, set
         setModelOverride(false);
       }
       resolveStyleModel(selectedStyle, models);
+      setSelectedProvider?.('ollama');
       setIsModelOpen(false);
       return;
     }
     if (setModelOverride) {
       setModelOverride(true);
     }
+    const chosen = models.find((model) => model?.name === value);
+    setSelectedProvider?.(chosen?.provider || 'ollama');
     setSelectedModel(value);
     setIsModelOpen(false);
   };
 
   const modelOptions = useMemo(() => {
-    const styled = getModelsForStyle(models, selectedStyle);
-    let base = styled.length > 0 ? styled : models;
+    const styled = getModelsForStyle(ollamaModels, selectedStyle);
+    let base = styled.length > 0 ? styled : ollamaModels;
 
     if (recommendedModelName) {
-      const recommendedEntry = models.find((model) => model?.name === recommendedModelName);
+      const recommendedEntry = base.find((model) => model?.name === recommendedModelName);
       if (recommendedEntry) {
         base = [
           recommendedEntry,
@@ -100,8 +112,9 @@ const TopBar = ({ activeTab, selectedModel, setSelectedModel, selectedStyle, set
       }
     }
 
-    return base;
-  }, [models, selectedStyle, recommendedModelName]);
+    const combined = airllmModels.length ? [...base, ...airllmModels] : base;
+    return combined;
+  }, [ollamaModels, airllmModels, selectedStyle, recommendedModelName]);
 
     const titles = {
     dashboard: t.nav?.dashboard || 'Home',
@@ -122,13 +135,34 @@ const TopBar = ({ activeTab, selectedModel, setSelectedModel, selectedStyle, set
   // =========================
   const fetchModels = async () => {
     try {
-      const response = await requestWorker("get_models");
-      if (!response) return;
+      const [ollamaResponse, airStatus] = await Promise.all([
+        requestWorker("get_models"),
+        requestWorker("airllm_status").catch(() => null)
+      ]);
 
-      const fetchedModels = Array.isArray(response)
-        ? response
-        : response.models || [];
-      setModels(fetchedModels);
+      const fetchedModels = Array.isArray(ollamaResponse)
+        ? ollamaResponse
+        : (ollamaResponse?.models || []);
+
+      const normalized = fetchedModels.map((m) => ({
+        ...m,
+        provider: m.provider || "ollama"
+      }));
+
+      const combined = [...normalized];
+
+      if (airStatus && typeof airStatus === 'object' && airStatus.status) {
+        setAirllmStatus(airStatus);
+        if (airStatus.status === "READY" && airStatus.model) {
+          combined.push({
+            name: airStatus.model,
+            provider: "airllm",
+            status: airStatus.status
+          });
+        }
+      }
+
+      setModels(combined);
     } catch (e) {
       console.error("[TopBar] get_models error:", e);
     }
@@ -144,8 +178,16 @@ const TopBar = ({ activeTab, selectedModel, setSelectedModel, selectedStyle, set
       fetchModels();
     };
 
+    const handleAirllmUpdate = () => {
+      fetchModels();
+    };
+
     window.addEventListener("models-updated", handleModelsUpdate);
-    return () => window.removeEventListener("models-updated", handleModelsUpdate);
+    window.addEventListener("airllm-updated", handleAirllmUpdate);
+    return () => {
+      window.removeEventListener("models-updated", handleModelsUpdate);
+      window.removeEventListener("airllm-updated", handleAirllmUpdate);
+    };
   }, []);
 
   useEffect(() => {
@@ -361,10 +403,19 @@ const TopBar = ({ activeTab, selectedModel, setSelectedModel, selectedStyle, set
                   }}
                 >
                   <div className="text-left">
-                    <span className="text-[10px] font-black uppercase tracking-widest block">{model.name}</span>
-                    {isSuggested && (
-                      <span className="text-[9px] opacity-50 block mt-1">{recommendedBadge}</span>
-                    )}
+                    <span className="text-[10px] font-black uppercase tracking-widest block">
+                      {model.name}
+                    </span>
+                    <div className="flex items-center gap-2 mt-1">
+                      {model.provider === 'airllm' && (
+                        <span className={`text-[9px] px-2 py-0.5 rounded-full ${isDarkMode ? 'bg-white/10 text-white/70' : 'bg-slate-100 text-slate-700'}`}>
+                          AirLLM
+                        </span>
+                      )}
+                      {isSuggested && (
+                        <span className="text-[9px] opacity-50 block">{recommendedBadge}</span>
+                      )}
+                    </div>
                   </div>
                   {isActive && <Check size={14} />}
                 </button>

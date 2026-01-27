@@ -16,10 +16,11 @@ const RemoteAccess = lazy(() => import('../pages/RemoteAccess'));
 const AnimationDemo = lazy(() => import('../pages/AnimationDemo'));
 const SecurityCenter = lazy(() => import('../pages/SecurityCenter'));
 const AdvancedCenter = lazy(() => import('../pages/AdvancedCenter'));
+const LicensePage = lazy(() => import('../pages/LicensePage'));
 
 const AppLayout = ({
   activeTab, setActiveTab, systemStats, selectedChatId,
-  setSelectedChatId, selectedModel, setSelectedModel,
+  setSelectedChatId, selectedModel, setSelectedModel, selectedProvider, setSelectedProvider,
   selectedStyle, setSelectedStyle, chatIntent, setChatIntent,
   prefillPrompt, setPrefillPrompt,
   modelOverride, setModelOverride,
@@ -56,6 +57,8 @@ const AppLayout = ({
           <AIChatPanel
             selectedModel={selectedModel}
             setSelectedModel={setSelectedModel}
+            selectedProvider={selectedProvider}
+            setSelectedProvider={setSelectedProvider}
             selectedStyle={selectedStyle}
             modelOverride={modelOverride}
             setModelOverride={setModelOverride}
@@ -92,6 +95,7 @@ const AppLayout = ({
       case 'memory': return <MemoryManager language={language} {...commonProps} />;
       case 'remote': return <RemoteAccess language={language} {...commonProps} />;
       case 'animation-demo': return <AnimationDemo />;
+      case 'license': return <LicensePage />;
       case 'settings':
         return (
           <Settings
@@ -167,6 +171,8 @@ const AppLayout = ({
           activeTab={activeTab}
           selectedModel={selectedModel}
           setSelectedModel={setSelectedModel}
+          selectedProvider={selectedProvider}
+          setSelectedProvider={setSelectedProvider}
           selectedStyle={selectedStyle}
           setSelectedStyle={setSelectedStyle}
           chatIntent={chatIntent}

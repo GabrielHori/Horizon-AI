@@ -39,7 +39,7 @@ import { SecurityNotification } from '../SecurityNotification';
 import { PermissionRequestModal } from '../PermissionRequestModal';
 import { PermissionBar } from '../PermissionBar';
 
-const AIChatPanel = ({ selectedModel, setSelectedModel, selectedStyle, chatIntent, setChatIntent, prefillPrompt, setPrefillPrompt, chatId, setSelectedChatId, language = 'fr', modelOverride, setModelOverride }) => {
+const AIChatPanel = ({ selectedModel, setSelectedModel, selectedProvider = 'ollama', setSelectedProvider, selectedStyle, chatIntent, setChatIntent, prefillPrompt, setPrefillPrompt, chatId, setSelectedChatId, language = 'fr', modelOverride, setModelOverride }) => {
   const { isDarkMode } = useTheme();
   const t = translations[language]?.chat || translations.en.chat;
 
@@ -47,6 +47,7 @@ const AIChatPanel = ({ selectedModel, setSelectedModel, selectedStyle, chatInten
 
   // Modèle et chat ID actifs
   const activeModel = selectedModel;
+  const activeProvider = selectedProvider || 'ollama';
   const activeChatId = chatId;
 
   // État local
@@ -289,6 +290,7 @@ const AIChatPanel = ({ selectedModel, setSelectedModel, selectedStyle, chatInten
   // Hook: Gestion de l'input
   const chatInput = useChatInput({
     activeModel,
+    activeProvider,
     activeChatId,
     activeProjectId,  // V2.1 : Passer l'ID du projet actif
     language,
@@ -301,7 +303,7 @@ const AIChatPanel = ({ selectedModel, setSelectedModel, selectedStyle, chatInten
     onMessageSent: ({ userMessage, image, assistantModel }) => {
       addMessages([
         { role: 'user', content: userMessage, image },
-        { role: 'assistant', content: '', model: assistantModel, prompt_id: null }
+        { role: 'assistant', content: '', model: assistantModel, provider: activeProvider, prompt_id: null }
       ]);
       resetAutoScroll();
     },

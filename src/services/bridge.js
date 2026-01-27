@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { logger } from './logger';
 
 // Codes d'erreur standardisés
 const ErrorCodes = {
@@ -30,7 +31,7 @@ function createErrorObject(code, message, cmd, originalError = null) {
       details: {
         name: originalError.name,
         message: originalError.message,
-        stack: process.env.NODE_ENV === 'development' ? originalError.stack : undefined
+        stack: logger.isDev() ? originalError.stack : undefined
       }
     })
   };
@@ -51,7 +52,7 @@ export async function requestWorker(cmd, payload = {}, timeoutMs = 30000) {
     const response = await Promise.race([requestPromise, timeoutPromise]);
 
     if (!response) {
-      console.warn(`[Bridge] Empty response for command: ${cmd}`);
+      logger.warn(`Empty response for command: ${cmd}`);
       return createErrorObject(
         ErrorCodes.EMPTY_RESPONSE,
         `Empty response received for command: ${cmd}`,
@@ -64,7 +65,7 @@ export async function requestWorker(cmd, payload = {}, timeoutMs = 30000) {
       try {
         return JSON.parse(response);
       } catch (parseError) {
-        console.error(`[Bridge] JSON parse error for command: ${cmd}`, parseError);
+        logger.error(`JSON parse error for command: ${cmd}`, parseError);
         return createErrorObject(
           ErrorCodes.INVALID_JSON,
           `Invalid JSON response for command: ${cmd}`,
@@ -89,7 +90,7 @@ export async function requestWorker(cmd, payload = {}, timeoutMs = 30000) {
       return response;
     }
 
-    console.warn(`[Bridge] Unexpected response type for command: ${cmd}`, typeof response);
+    logger.warn(`Unexpected response type for command: ${cmd}`, typeof response);
     return createErrorObject(
       ErrorCodes.BRIDGE_ERROR,
       `Unexpected response type for command: ${cmd}`,
@@ -97,7 +98,7 @@ export async function requestWorker(cmd, payload = {}, timeoutMs = 30000) {
     );
 
   } catch (error) {
-    console.error(`[Bridge Error] Command: ${cmd}`, error);
+    logger.error(`Command failed: ${cmd}`, error);
 
     // Détecter timeout
     if (error.message && error.message.includes('timeout')) {
@@ -164,7 +165,7 @@ export async function setupStreamListener(onChunk) {
         try {
           callback(data);
         } catch (e) {
-          console.error("[Bridge] Stream callback error:", e);
+          logger.error('Stream callback error:', e);
         }
       });
     });
@@ -201,7 +202,7 @@ export async function setupPushListener(onData) {
         try {
           callback(event.payload);
         } catch (e) {
-          console.error("[Bridge] Push callback error:", e);
+          logger.error('Push callback error:', e);
         }
       });
     });
@@ -237,7 +238,7 @@ export function cleanupAllListeners() {
   pushCallbacks.clear();
   pushListenerSetup = false;
 
-  console.log('[Bridge] All listeners cleaned up');
+  logger.debug('All listeners cleaned up');
 }
 
 // 🛡️ STABILISATION: Debug - Nombre de callbacks actifs

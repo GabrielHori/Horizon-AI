@@ -10,9 +10,18 @@
 
         :root {
             --bg-dark: #0a0a0a;
+            --bg-void: #050505;
+            --bg-panel: rgba(10, 10, 10, 0.72);
+            --bg-panel-strong: rgba(15, 15, 15, 0.9);
+            --glass: rgba(255, 255, 255, 0.04);
+            --glass-strong: rgba(255, 255, 255, 0.08);
             --border-white: rgba(255, 255, 255, 0.08);
-            --metal-text: linear-gradient(180deg, #ffffff 0%, #888888 40%, #ffffff 50%, #666666 60%, #aaaaaa 100%);
+            --border-strong: rgba(255, 255, 255, 0.16);
+            --text-muted: rgba(255, 255, 255, 0.6);
+            --accent-cyan: #22d3ee;
+            --accent-violet: #6366f1;
             --accent-status: #10b981; /* Vert uniquement pour le point de statut */
+            --metal-text: linear-gradient(180deg, #ffffff 0%, #888888 40%, #ffffff 50%, #666666 60%, #aaaaaa 100%);
         }
 
         body {
@@ -23,6 +32,8 @@
             overflow: hidden;
             display: flex;
             flex-direction: column;
+            letter-spacing: 0.2px;
+            -webkit-font-smoothing: antialiased;
         }
 
         /* ===== FOND ANIMÉ PRISM (TON CODE REACT) ===== */
@@ -66,44 +77,339 @@
         .auth-btn { width: 100%; padding: 16px; border-radius: 16px; border: none; background: white; color: black; font-weight: 800; cursor: pointer; }
 
         /* --- HEADER --- */
-        header { padding: 15px 25px; border-bottom: 1px solid var(--border-white); display: flex; justify-content: space-between; align-items: center; background: rgba(10, 10, 10, 0.7); backdrop-filter: blur(10px); }
-        .logo { font-weight: 900; font-size: 18px; color: white; }
+        header {
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--border-white);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(5, 5, 5, 0.75);
+            backdrop-filter: blur(14px);
+        }
+        .logo {
+            font-weight: 900;
+            font-size: 18px;
+            letter-spacing: 1.2px;
+            text-transform: uppercase;
+            color: white;
+        }
         .logo span { color: white; opacity: 0.5; } /* Suppression du vert ici */
+        .header-actions { display: flex; align-items: center; gap: 14px; }
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 12px;
+            border-radius: 999px;
+            background: rgba(16, 185, 129, 0.12);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--accent-status);
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.6);
+        }
+        .status-text {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            color: var(--accent-status);
+        }
+        .model-select {
+            background: rgba(255,255,255,0.05);
+            color: white;
+            border: 1px solid var(--border-white);
+            padding: 6px 10px;
+            border-radius: 10px;
+            font-size: 11px;
+            outline: none;
+        }
 
         /* --- CHAT LAYOUT --- */
-        .main-container { flex: 1; display: flex; flex-direction: column; overflow: hidden; max-width: 1000px; margin: 0 auto; width: 100%; }
-        
-        .conversations-bar { display: flex; gap: 10px; padding: 15px; overflow-x: auto; }
-        .conv-pill { padding: 8px 16px; background: rgba(255,255,255,0.05); border: 1px solid var(--border-white); border-radius: 100px; font-size: 12px; color: #888; cursor: pointer; white-space: nowrap; }
-        .conv-pill.active { border-color: white; color: white; background: rgba(255,255,255,0.1); }
-        .btn-new { background: rgba(255,255,255,0.1); border: 1px solid var(--border-white); color: white; padding: 8px 16px; border-radius: 100px; font-size: 11px; font-weight: bold; cursor: pointer; }
+        .main-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            max-width: 1100px;
+            margin: 0 auto;
+            width: 100%;
+            padding: 18px 22px 22px;
+            gap: 14px;
+        }
 
-        /* --- MESSAGES DESIGN (CORRIGÉ SELON SCREEN) --- */
-        #messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 20px; }
-        
-        .message { display: flex; flex-direction: column; max-width: 85%; }
+        .conversations-bar {
+            display: flex;
+            gap: 10px;
+            padding: 12px 14px;
+            overflow-x: auto;
+            background: var(--bg-panel);
+            border: 1px solid var(--border-white);
+            border-radius: 18px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+        }
+        .conv-pill {
+            padding: 8px 16px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--border-white);
+            border-radius: 100px;
+            font-size: 12px;
+            color: var(--text-muted);
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.2s ease;
+        }
+        .conv-pill:hover { color: #fff; border-color: var(--border-strong); }
+        .conv-pill.active {
+            border-color: rgba(99, 102, 241, 0.6);
+            color: #fff;
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(34, 211, 238, 0.12));
+            box-shadow: 0 8px 20px rgba(99, 102, 241, 0.2);
+        }
+        .btn-new {
+            background: rgba(255,255,255,0.08);
+            border: 1px solid var(--border-white);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 100px;
+            font-size: 11px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .btn-new:hover { border-color: var(--border-strong); transform: translateY(-1px); }
+
+        /* --- MESSAGES --- */
+        #messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            background: rgba(5, 5, 5, 0.55);
+            border: 1px solid var(--border-white);
+            border-radius: 22px;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+        }
+
+        .message { display: flex; flex-direction: column; max-width: 86%; }
         .message.user { align-self: flex-end; align-items: flex-end; }
         .message.assistant { align-self: flex-start; align-items: flex-start; }
 
-        .bubble { padding: 14px 22px; border-radius: 20px; font-size: 14px; line-height: 1.6; }
-        
-        /* Utilisateur : Blanc Pur, Texte Noir */
-        .user .bubble { background: #ffffff; color: #000000; border-bottom-right-radius: 4px; font-weight: 500; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
-        
-        /* Assistant : Gris très sombre / Translucide, Texte Blanc */
-        .assistant .bubble { background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-white); color: #efefef; border-bottom-left-radius: 4px; backdrop-filter: blur(10px); }
+        .bubble {
+            padding: 14px 20px;
+            border-radius: 18px;
+            font-size: 14px;
+            line-height: 1.65;
+            backdrop-filter: blur(10px);
+        }
 
-        pre { background: #000 !important; padding: 15px; border-radius: 12px; overflow-x: auto; margin: 10px 0; border: 1px solid var(--border-white); }
-        code { font-family: 'Courier New', monospace; font-size: 13px; color: #10b981; }
+        .user .bubble {
+            background: linear-gradient(135deg, #f7f7f7 0%, #dcdcdc 100%);
+            color: #0a0a0a;
+            border: 1px solid rgba(255,255,255,0.45);
+            border-bottom-right-radius: 6px;
+            font-weight: 500;
+            box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+        }
+
+        .assistant .bubble {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--border-white);
+            color: #efefef;
+            border-bottom-left-radius: 6px;
+            box-shadow: 0 6px 18px rgba(0,0,0,0.2);
+        }
+
+        .message.thinking .bubble {
+            border-color: rgba(99, 102, 241, 0.35);
+            background: rgba(15, 15, 15, 0.85);
+            box-shadow: 0 12px 32px rgba(99, 102, 241, 0.2);
+        }
+
+        .thinking-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .thinking-title {
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 1.6px;
+            text-transform: uppercase;
+            color: var(--text-muted);
+        }
+
+        .thinking-dots {
+            display: inline-flex;
+            gap: 4px;
+        }
+
+        .thinking-dots span {
+            width: 6px;
+            height: 6px;
+            border-radius: 999px;
+            background: var(--accent-cyan);
+            animation: dot-pulse 1.2s ease-in-out infinite;
+        }
+
+        .thinking-dots span:nth-child(2) { animation-delay: 0.2s; background: var(--accent-violet); }
+        .thinking-dots span:nth-child(3) { animation-delay: 0.4s; background: #ffffff; }
+
+        .thinking-status {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 10px;
+        }
+
+        .thinking-progress {
+            height: 4px;
+            background: rgba(255,255,255,0.08);
+            border-radius: 999px;
+            overflow: hidden;
+            margin-bottom: 12px;
+        }
+
+        .thinking-progress span {
+            display: block;
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent-cyan), var(--accent-violet));
+            animation: shimmer 1.4s linear infinite;
+        }
+
+        .thinking-steps {
+            display: grid;
+            gap: 6px;
+            font-size: 11px;
+        }
+
+        .thinking-step {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: rgba(255,255,255,0.35);
+        }
+
+        .thinking-step .step-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 999px;
+            background: rgba(255,255,255,0.15);
+        }
+
+        .thinking-step.done {
+            color: rgba(255,255,255,0.6);
+        }
+
+        .thinking-step.done .step-dot {
+            background: rgba(16,185,129,0.7);
+            box-shadow: 0 0 8px rgba(16,185,129,0.35);
+        }
+
+        .thinking-step.active {
+            color: #ffffff;
+            font-weight: 600;
+        }
+
+        .thinking-step.active .step-dot {
+            background: var(--accent-cyan);
+            box-shadow: 0 0 8px rgba(34,211,238,0.5);
+        }
+
+        pre {
+            background: #000 !important;
+            padding: 15px;
+            border-radius: 12px;
+            overflow-x: auto;
+            margin: 10px 0;
+            border: 1px solid var(--border-white);
+        }
+        code { font-family: 'Courier New', monospace; font-size: 13px; color: var(--accent-status); }
 
         /* --- INPUT AREA --- */
-        .input-wrapper { padding: 20px; background: linear-gradient(0deg, #0a0a0a 60%, transparent); }
-        .input-box { background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-white); border-radius: 24px; padding: 10px 15px; display: flex; align-items: center; gap: 10px; }
-        
-        textarea { flex: 1; background: transparent; border: none; color: white; outline: none; resize: none; font-size: 14px; }
-        .btn-send { background: white; border: none; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        .input-wrapper {
+            padding: 0 4px 6px;
+        }
+        .input-box {
+            background: rgba(5, 5, 5, 0.7);
+            border: 1px solid var(--border-white);
+            border-radius: 20px;
+            padding: 12px 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 10px 24px rgba(0,0,0,0.35);
+        }
+
+        textarea {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: white;
+            outline: none;
+            resize: none;
+            font-size: 14px;
+        }
+
+        textarea::placeholder { color: rgba(255,255,255,0.4); }
+
+        .btn-send {
+            background: linear-gradient(135deg, #ffffff, #dcdcdc);
+            border: none;
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            position: relative;
+        }
+
+        .btn-send:hover { transform: translateY(-1px); box-shadow: 0 6px 14px rgba(0,0,0,0.25); }
+        .btn-send.is-waiting { cursor: not-allowed; box-shadow: none; }
+        .btn-send.is-waiting svg { opacity: 0; }
+
+        .btn-send.is-waiting::after {
+            content: "";
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            border: 2px solid rgba(0,0,0,0.35);
+            border-top-color: #000000;
+            animation: spin 1s linear infinite;
+            position: absolute;
+        }
 
         .hidden { display: none !important; }
+
+        @keyframes dot-pulse {
+            0%, 100% { transform: translateY(0); opacity: 0.6; }
+            50% { transform: translateY(-3px); opacity: 1; }
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-30%); }
+            100% { transform: translateX(30%); }
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 720px) {
+            header { padding: 12px 16px; }
+            .main-container { padding: 12px; }
+            #messages { padding: 14px; }
+            .conversations-bar { padding: 10px; }
+        }
     </style>
 </head>
 <body>
@@ -115,7 +421,7 @@
     <div id="auth-screen" class="auth-screen">
         <div class="auth-card">
             <h1 class="auth-title">HORIZON AI</h1>
-            <input type="password" id="token-input" class="auth-input" placeholder="Clé d'accès">
+            <input type="password" id="token-input" class="auth-input" placeholder="Cle d'acces">
             <button id="auth-btn" class="auth-btn">SE CONNECTER</button>
         </div>
     </div>
@@ -123,13 +429,13 @@
     <div id="main-interface" class="hidden" style="display: flex; flex-direction: column; height: 100%;">
         <header>
             <div class="logo">HORIZON AI</div>
-            <div style="display: flex; align-items: center; gap: 15px;">
-                <div style="display: flex; align-items: center; gap: 6px;">
-                    <div style="width: 8px; height: 8px; background: var(--accent-status); border-radius: 50%; box-shadow: 0 0 8px var(--accent-status);"></div>
-                    <span style="font-size: 10px; font-weight: 700; letter-spacing: 1px; color: var(--accent-status);">SYSTÈME PRÊT</span>
+            <div class="header-actions">
+                <div class="status-pill">
+                    <span class="status-dot"></span>
+                    <span class="status-text">SYSTEME PRET</span>
                 </div>
-                <select id="model-select" style="background: rgba(255,255,255,0.05); color: white; border: 1px solid var(--border-white); padding: 5px 10px; border-radius: 8px; font-size: 11px; outline: none;">
-                    <option value="">Modèle...</option>
+                <select id="model-select" class="model-select">
+                    <option value="">Modele...</option>
                 </select>
             </div>
         </header>
@@ -161,6 +467,14 @@
         let token = localStorage.getItem('horizon_token') || '';
         let currentChatId = null;
         let messages = [];
+        let thinkingTimer = null;
+        let isWaiting = false;
+        const thinkingStages = [
+            'Analyse de la demande',
+            'Recherche du contexte',
+            'Preparation de la reponse'
+        ];
+        const thinkingStageMs = 1800;
 
         const authScreen = document.getElementById('auth-screen');
         const mainInterface = document.getElementById('main-interface');
@@ -171,6 +485,58 @@
         const sendBtn = document.getElementById('send-btn');
         const modelSelect = document.getElementById('model-select');
         const convsEl = document.getElementById('conversations');
+
+        function setWaiting(state) {
+            isWaiting = state;
+            sendBtn.disabled = state;
+            sendBtn.classList.toggle('is-waiting', state);
+        }
+
+        function startThinking() {
+            stopThinking(false);
+            messages.push({
+                role: 'assistant',
+                content: '',
+                thinking: true,
+                startedAt: Date.now(),
+                stageIndex: 0
+            });
+            setWaiting(true);
+            renderMessages();
+            thinkingTimer = setInterval(() => {
+                const thinkingMessage = messages.find(m => m.thinking);
+                if (!thinkingMessage) {
+                    stopThinking(false);
+                    return;
+                }
+                const elapsedMs = Date.now() - thinkingMessage.startedAt;
+                thinkingMessage.stageIndex = Math.min(Math.floor(elapsedMs / thinkingStageMs), thinkingStages.length - 1);
+                renderMessages();
+            }, 900);
+        }
+
+        function stopThinking(shouldRender = true) {
+            if (thinkingTimer) {
+                clearInterval(thinkingTimer);
+                thinkingTimer = null;
+            }
+            if (messages.some(m => m.thinking)) {
+                messages = messages.filter(m => !m.thinking);
+                if (shouldRender) {
+                    renderMessages();
+                }
+            }
+            setWaiting(false);
+        }
+
+        function getThinkingState(message) {
+            const elapsed = Math.max(0, Math.floor((Date.now() - message.startedAt) / 1000));
+            const stageIndex = Math.min(message.stageIndex || 0, thinkingStages.length - 1);
+            const label = thinkingStages[stageIndex] || thinkingStages[0];
+            const progress = Math.min(95, Math.round(((stageIndex + 1) / thinkingStages.length) * 100));
+            return { elapsed, stageIndex, label, progress };
+        }
+
 
         async function api(path, options = {}) {
             const res = await fetch(path, {
@@ -216,9 +582,10 @@
             }
         }
 
-        window.newChat = () => { currentChatId = null; messages = []; renderMessages(); loadConvs(); };
+        window.newChat = () => { stopThinking(); currentChatId = null; messages = []; renderMessages(); loadConvs(); };
 
         window.selectConv = async (id) => {
+            stopThinking();
             currentChatId = id;
             loadConvs();
             const res = await api(`/api/conversations/${id}/messages`);
@@ -230,11 +597,33 @@
                 messagesEl.innerHTML = '<div style="margin: auto; text-align: center; opacity: 0.1;"><h2 style="font-weight: 900; letter-spacing: 12px; font-size: 40px;">HORIZON</h2></div>';
                 return;
             }
-            messagesEl.innerHTML = messages.map(m => `
+            messagesEl.innerHTML = messages.map(m => {
+                if (m.thinking) {
+                    const state = getThinkingState(m);
+                    const steps = thinkingStages.map((stage, index) => {
+                        const stateClass = index < state.stageIndex ? 'thinking-step done' : index === state.stageIndex ? 'thinking-step active' : 'thinking-step';
+                        return `<div class="${stateClass}"><span class="step-dot"></span><span>${stage}</span></div>`;
+                    }).join('');
+
+                    return `
+                <div class="message assistant thinking">
+                    <div class="bubble">
+                        <div class="thinking-header">
+                            <span class="thinking-title">HORIZON AI</span>
+                            <span class="thinking-dots"><span></span><span></span><span></span></span>
+                        </div>
+                        <div class="thinking-status">${state.label} - ${state.elapsed}s</div>
+                        <div class="thinking-progress"><span style="width: ${state.progress}%"></span></div>
+                        <div class="thinking-steps">${steps}</div>
+                    </div>
+                </div>`;
+                }
+
+                return `
                 <div class="message ${m.role}">
                     <div class="bubble">${formatContent(m.content)}</div>
-                </div>
-            `).join('');
+                </div>`;
+            }).join('');
             messagesEl.scrollTop = messagesEl.scrollHeight;
         }
 
@@ -248,22 +637,31 @@
 
         async function send() {
             const content = chatInput.value.trim();
-            if(!content) return;
+            if(!content || isWaiting) return;
             messages.push({ role: 'user', content });
             renderMessages();
             chatInput.value = '';
+            startThinking();
             try {
                 const res = await api('/api/chat', {
                     method: 'POST',
                     body: JSON.stringify({ model: modelSelect.value, prompt: content, chat_id: currentChatId })
                 });
+                stopThinking(false);
                 if(res.success) {
                     messages.push({ role: 'assistant', content: res.response });
                     currentChatId = res.chat_id;
                     renderMessages();
                     loadConvs();
+                } else {
+                    messages.push({ role: 'assistant', content: res.error || 'Erreur: reponse invalide.' });
+                    renderMessages();
                 }
-            } catch(e) {}
+            } catch(e) {
+                stopThinking(false);
+                messages.push({ role: 'assistant', content: 'Erreur: impossible de contacter le serveur.' });
+                renderMessages();
+            }
         }
 
         authBtn.onclick = authenticate;

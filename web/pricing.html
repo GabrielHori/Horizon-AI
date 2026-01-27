@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Horizon AI - Pricing</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container header-inner">
+        <div class="logo">Horizon AI</div>
+        <nav class="nav">
+          <a href="index.html">Home</a>
+          <a href="features.html">Features</a>
+          <a class="is-active" href="pricing.html">Pricing</a>
+          <a href="security.html">Security Center</a>
+        </nav>
+        <div class="nav-cta">
+          <a class="btn btn-ghost" href="pricing.html">Pricing</a>
+          <a class="btn btn-primary" href="#">Download</a>
+          <button class="account-trigger" type="button" data-account-trigger aria-label="Account menu">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="8" r="3.5" />
+              <path d="M20 21c0-3.3-3.6-6-8-6s-8 2.7-8 6" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div class="container hero-grid">
+          <div class="hero-copy reveal">
+            <p class="kicker">Pricing</p>
+            <h1>Clear, local-first pricing.</h1>
+            <p class="subhead">
+              The core desktop experience is free for local use. Remote access is an optional,
+              secure upgrade with token-based controls.
+            </p>
+          </div>
+          <div class="hero-panel reveal" style="--delay: 0.1s">
+            <div class="status-grid">
+              <div class="status-item">
+                <strong>Local usage</strong>
+                <span>Always free</span>
+              </div>
+              <div class="status-item">
+                <strong>Remote access</strong>
+                <span>Opt-in</span>
+              </div>
+              <div class="status-item">
+                <strong>Account required</strong>
+                <span>Only for remote</span>
+              </div>
+              <div class="status-item">
+                <strong>Data ownership</strong>
+                <span>You control</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="container grid grid-2">
+          <div class="pricing-card reveal">
+            <h3>Free (Local)</h3>
+            <div class="price">$0</div>
+            <p class="subhead">Everything you need for local-first AI.</p>
+            <ul class="pricing-list">
+              <li>Full local AI usage</li>
+              <li>Model management</li>
+              <li>Local history and storage</li>
+              <li>GPU acceleration</li>
+              <li>No account required</li>
+            </ul>
+            <a class="btn btn-ghost" href="#">Download</a>
+          </div>
+          <div class="pricing-card reveal" style="--delay: 0.05s">
+            <h3>Pro (Remote Access)</h3>
+            <div class="price">$12 / month</div>
+            <p class="subhead">Secure access when you need it, without cloud inference.</p>
+            <ul class="pricing-list">
+              <li>Secure remote access</li>
+              <li>Token-based authentication</li>
+              <li>Rate limiting</li>
+              <li>IP allowlist</li>
+              <li>Device management</li>
+            </ul>
+            <a class="btn btn-ghost" href="#">Start Pro</a>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="container grid grid-2">
+          <div class="callout reveal">
+            <h3>No forced accounts</h3>
+            <p>
+              Local usage is fully offline and does not require a login. Only remote access features
+              use accounts and tokens.
+            </p>
+          </div>
+          <div class="callout reveal" style="--delay: 0.05s">
+            <h3>Transparent billing</h3>
+            <p>
+              Remote access covers the secure tunnel and device management layer. Horizon AI never
+              charges for local inference.
+            </p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="container">
+        <span>Horizon AI pricing is designed to keep local usage free and private.</span>
+      </div>
+    </footer>
+
+    <div class="modal" data-account-modal aria-hidden="true">
+      <div class="modal-overlay" data-account-close></div>
+      <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="account-title">
+        <div class="modal-header">
+          <h2 class="modal-title" id="account-title">Account</h2>
+          <button class="modal-close" type="button" data-account-close aria-label="Close">
+            X
+          </button>
+        </div>
+        <form class="form-grid">
+          <div class="form-field">
+            <label for="account-email">Email</label>
+            <input class="input" id="account-email" name="account-email" type="email" placeholder="name@domain" />
+          </div>
+          <div class="form-field">
+            <label for="account-password">Password</label>
+            <input class="input" id="account-password" name="account-password" type="password" placeholder="********" />
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-primary" type="button">Se connecter</button>
+          </div>
+        </form>
+        <div class="modal-links">
+          <a href="#">Mot de passe oublie</a>
+          <a href="#">Creer un compte</a>
+        </div>
+      </div>
+    </div>
+    <script src="account-modal.js"></script>
+  </body>
+</html>

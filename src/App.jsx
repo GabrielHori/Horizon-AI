@@ -17,6 +17,7 @@ function App() {
   const [showOllamaSetup, setShowOllamaSetup] = useState(true);
   const [selectedChatId, setSelectedChatId] = useState(null);
   const [selectedModel, setSelectedModel] = useState("");
+  const [selectedProvider, setSelectedProvider] = useState("ollama");
   const [selectedStyle, setSelectedStyle] = useState(DEFAULT_STYLE_ID);
   const [modelOverride, setModelOverride] = useState(false);
   const [chatIntent, setChatIntent] = useState(null);
@@ -127,6 +128,8 @@ function App() {
           setSelectedChatId={setSelectedChatId}
           selectedModel={selectedModel}
           setSelectedModel={setSelectedModel}
+          selectedProvider={selectedProvider}
+          setSelectedProvider={setSelectedProvider}
           selectedStyle={selectedStyle}
           setSelectedStyle={setSelectedStyle}
           modelOverride={modelOverride}

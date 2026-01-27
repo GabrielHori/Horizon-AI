@@ -44,6 +44,21 @@ export const translations = {
     showQR: "Afficher le QR Code",
     hideQR: "Masquer le QR Code",
 
+    // Custom domain
+    customDomainTitle: "Domaine personnalise",
+    customDomainDesc: "Utilisez un tunnel Cloudflare nomme pour un lien fixe (ex: ai.example.com).",
+    customDomainLabel: "Domaine/sous-domaine",
+    customDomainTunnelName: "Nom du tunnel",
+    customDomainCredentials: "Fichier credentials.json",
+    customDomainSave: "Enregistrer",
+    customDomainDisable: "Desactiver",
+    customDomainSaved: "Configuration enregistree.",
+    customDomainHint: "Redemarrez le tunnel pour appliquer le domaine.",
+    customDomainPlaceholder: "ai.example.com",
+    customTunnelPlaceholder: "horizon-ai",
+    customCredentialsPlaceholder: "C:\\Users\\...\\<tunnel-id>.json",
+    domainSaveError: "Erreur lors de l'enregistrement du domaine",
+
     // IP Allowlist
     ipAllowlist: "Liste Blanche IP",
     ipAllowlistDesc: "Restreindre l'accès à des IPs spécifiques (optionnel)",
@@ -105,6 +120,21 @@ export const translations = {
     scanQR: "Scan this code with your phone",
     showQR: "Show QR Code",
     hideQR: "Hide QR Code",
+
+    // Custom domain
+    customDomainTitle: "Custom domain",
+    customDomainDesc: "Use a named Cloudflare Tunnel for a fixed link (example: ai.example.com).",
+    customDomainLabel: "Domain/subdomain",
+    customDomainTunnelName: "Tunnel name",
+    customDomainCredentials: "credentials.json file",
+    customDomainSave: "Save",
+    customDomainDisable: "Disable",
+    customDomainSaved: "Configuration saved.",
+    customDomainHint: "Restart the tunnel to apply the domain.",
+    customDomainPlaceholder: "ai.example.com",
+    customTunnelPlaceholder: "horizon-ai",
+    customCredentialsPlaceholder: "C:\\Users\\...\\<tunnel-id>.json",
+    domainSaveError: "Failed to save custom domain",
 
     // IP Allowlist
     ipAllowlist: "IP Allowlist",

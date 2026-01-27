@@ -66,6 +66,11 @@ export default function RemoteAccess({ language = 'fr', isDarkMode: propDarkMode
   const [installing, setInstalling] = useState(false);
   const [sessions, setSessions] = useState([]); // Sessions actives
   const [revokingSession, setRevokingSession] = useState(null); // ID session en cours de révocation
+  const [customDomain, setCustomDomain] = useState('');
+  const [tunnelName, setTunnelName] = useState('');
+  const [credentialsFile, setCredentialsFile] = useState('');
+  const [savingDomain, setSavingDomain] = useState(false);
+  const [domainSaved, setDomainSaved] = useState(false);
 
   // Get translations
   const text = translations[language] || translations.en;
@@ -144,6 +149,17 @@ export default function RemoteAccess({ language = 'fr', isDarkMode: propDarkMode
     
     return () => clearInterval(interval);
   }, [status?.tunnel_running, loadSessions]);
+
+  useEffect(() => {
+    if (!status) return;
+    setCustomDomain(status.custom_domain || '');
+    setTunnelName(status.tunnel_name || '');
+    setCredentialsFile(status.credentials_file || '');
+  }, [status?.custom_domain, status?.tunnel_name, status?.credentials_file]);
+
+  useEffect(() => {
+    setDomainSaved(false);
+  }, [customDomain, tunnelName, credentialsFile]);
 
   // Handle errors from hooks
   const handleError = useCallback((err) => {
@@ -238,6 +254,56 @@ export default function RemoteAccess({ language = 'fr', isDarkMode: propDarkMode
       setRevokingSession(null);
     }
   }, [ensureRemoteAccessPermission, handleError, language, loadSessions, loadStatus, sessions]);
+
+  const saveNamedTunnelConfig = async (enabledOverride = null) => {
+    setSavingDomain(true);
+    setDomainSaved(false);
+    setError(null);
+
+    try {
+      const allowed = await ensureRemoteAccessPermission(
+        language === 'fr' ? 'Configurer un domaine personnalise' : 'Configure a custom domain'
+      );
+      if (!allowed) {
+        setError(language === 'fr' ? 'Permission RemoteAccess requise' : 'RemoteAccess permission required');
+        return;
+      }
+
+      const enabled = enabledOverride === null
+        ? Boolean(customDomain.trim() || tunnelName.trim() || credentialsFile.trim())
+        : enabledOverride;
+
+      const result = await requestWorker("tunnel_set_named_tunnel", enabled ? {
+        enabled: true,
+        custom_domain: customDomain.trim(),
+        tunnel_name: tunnelName.trim(),
+        credentials_file: credentialsFile.trim()
+      } : {
+        enabled: false,
+        custom_domain: "",
+        tunnel_name: "",
+        credentials_file: ""
+      });
+
+      if (!result?.success) {
+        setError(result?.error || text.domainSaveError);
+        return;
+      }
+
+      if (!enabled) {
+        setCustomDomain('');
+        setTunnelName('');
+        setCredentialsFile('');
+      }
+
+      setDomainSaved(true);
+      await loadStatus();
+    } catch (err) {
+      handleError(err);
+    } finally {
+      setSavingDomain(false);
+    }
+  };
 
   // Add IP to allowlist
   const addAllowedIp = async () => {
@@ -454,6 +520,102 @@ export default function RemoteAccess({ language = 'fr', isDarkMode: propDarkMode
           </div>
         </div>
 
+        {/* Custom domain */}
+        <div className={`p-6 rounded-[24px] border ${isDarkMode ? 'bg-black/20 border-white/5' : 'bg-slate-50 border-slate-200'}`}>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <ExternalLink size={18} className={isDarkMode ? 'text-cyan-400' : 'text-cyan-600'} />
+              <h3 className={`text-sm font-black uppercase tracking-wider ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                {text.customDomainTitle}
+              </h3>
+            </div>
+            {status?.use_named_tunnel && (
+              <span className={`text-xs px-2 py-1 rounded-full font-bold ${
+                isDarkMode ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30' : 'bg-cyan-100 text-cyan-700 border border-cyan-200'
+              }`}>
+                {language === 'fr' ? 'Actif' : 'Active'}
+              </span>
+            )}
+          </div>
+
+          <p className={`text-xs mb-4 ${isDarkMode ? 'opacity-60' : 'text-slate-600'}`}>
+            {text.customDomainDesc}
+          </p>
+
+          <div className="grid gap-3">
+            <div className="grid gap-2">
+              <label className={`text-[10px] uppercase tracking-wider ${isDarkMode ? 'opacity-50' : 'text-slate-500'}`}>
+                {text.customDomainLabel}
+              </label>
+              <input
+                type="text"
+                value={customDomain}
+                onChange={(e) => setCustomDomain(e.target.value)}
+                placeholder={text.customDomainPlaceholder}
+                className={`p-3 rounded-lg text-xs font-mono ${isDarkMode ? 'bg-black/40 text-white' : 'bg-white text-slate-900'} border border-transparent focus:border-cyan-500/40 outline-none`}
+              />
+            </div>
+
+            <div className="grid gap-2">
+              <label className={`text-[10px] uppercase tracking-wider ${isDarkMode ? 'opacity-50' : 'text-slate-500'}`}>
+                {text.customDomainTunnelName}
+              </label>
+              <input
+                type="text"
+                value={tunnelName}
+                onChange={(e) => setTunnelName(e.target.value)}
+                placeholder={text.customTunnelPlaceholder}
+                className={`p-3 rounded-lg text-xs font-mono ${isDarkMode ? 'bg-black/40 text-white' : 'bg-white text-slate-900'} border border-transparent focus:border-cyan-500/40 outline-none`}
+              />
+            </div>
+
+            <div className="grid gap-2">
+              <label className={`text-[10px] uppercase tracking-wider ${isDarkMode ? 'opacity-50' : 'text-slate-500'}`}>
+                {text.customDomainCredentials}
+              </label>
+              <input
+                type="text"
+                value={credentialsFile}
+                onChange={(e) => setCredentialsFile(e.target.value)}
+                placeholder={text.customCredentialsPlaceholder}
+                className={`p-3 rounded-lg text-xs font-mono ${isDarkMode ? 'bg-black/40 text-white' : 'bg-white text-slate-900'} border border-transparent focus:border-cyan-500/40 outline-none`}
+              />
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 mt-4">
+            <button
+              onClick={() => saveNamedTunnelConfig(true)}
+              disabled={savingDomain}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+                isDarkMode ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 hover:bg-cyan-500/30' : 'bg-cyan-100 text-cyan-700 border border-cyan-200 hover:bg-cyan-200'
+              } ${savingDomain ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105 active:scale-95'}`}
+            >
+              {savingDomain && <Loader2 size={12} className="animate-spin" />}
+              {text.customDomainSave}
+            </button>
+            <button
+              onClick={() => saveNamedTunnelConfig(false)}
+              disabled={savingDomain}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+                isDarkMode ? 'bg-white/5 text-white/60 hover:bg-white/10' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'
+              } ${savingDomain ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105 active:scale-95'}`}
+            >
+              {text.customDomainDisable}
+            </button>
+          </div>
+
+          {domainSaved && (
+            <p className={`text-[10px] mt-3 ${isDarkMode ? 'text-emerald-400/80' : 'text-emerald-600'}`}>
+              {text.customDomainSaved}
+            </p>
+          )}
+
+          <p className={`text-[10px] mt-2 ${isDarkMode ? 'opacity-40' : 'text-slate-500'}`}>
+            {text.customDomainHint}
+          </p>
+        </div>
+
         {/* Active tunnel content */}
         {status?.tunnel_running && status?.tunnel_url && (
           <div className="space-y-6">
@@ -469,11 +631,43 @@ export default function RemoteAccess({ language = 'fr', isDarkMode: propDarkMode
             />
 
             {/* QR Code */}
-            {showQR && (
-              <div className={`p-6 rounded-[24px] border ${isDarkMode ? 'bg-black/20 border-white/5' : 'bg-slate-50 border-slate-200'}`}>
-                <QRCodeDisplay url={status.tunnel_url} isDarkMode={isDarkMode} />
+            <div className={`p-6 rounded-[24px] border ${isDarkMode ? 'bg-black/20 border-white/5' : 'bg-slate-50 border-slate-200'}`}>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <Smartphone size={18} className={isDarkMode ? 'text-emerald-400' : 'text-emerald-600'} />
+                  <h3 className={`text-sm font-black uppercase tracking-wider ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                    {text.qrCode}
+                  </h3>
+                </div>
+                <button
+                  onClick={() => setShowQR((prev) => !prev)}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all ${
+                    isDarkMode ? 'bg-white/5 hover:bg-white/10 text-white/70' : 'bg-slate-200 hover:bg-slate-300 text-slate-600'
+                  }`}
+                >
+                  <QrCode size={14} />
+                  {showQR ? text.hideQR : text.showQR}
+                </button>
               </div>
-            )}
+
+              {showQR && (
+                <div className="flex flex-col items-center">
+                  <QRCodeDisplay
+                    data={currentToken ? `${status.tunnel_url}?token=${currentToken.token}` : status.tunnel_url}
+                    size={200}
+                    isDarkMode={isDarkMode}
+                  />
+                  <p className={`text-[10px] mt-3 text-center ${isDarkMode ? 'opacity-50' : 'text-slate-500'}`}>
+                    {text.scanQR}
+                  </p>
+                  {currentToken && (
+                    <p className={`text-[10px] mt-1 text-center ${isDarkMode ? 'text-amber-400/70' : 'text-amber-600'}`}>
+                      {language === 'fr' ? 'Connexion auto (token inclus)' : 'Auto-login (token included)'}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
 
             {/* Sessions actives (Sprint 1.2) */}
             <div className={`p-6 rounded-[24px] border ${isDarkMode ? 'bg-black/20 border-white/5' : 'bg-slate-50 border-slate-200'}`}>

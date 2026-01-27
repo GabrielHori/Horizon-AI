@@ -1,5 +1,5 @@
 import React from 'react';
-import { Zap, LayoutDashboard, MessageSquare, ShieldCheck, Settings, Cpu, HardDrive, Database } from 'lucide-react';
+import { Zap, LayoutDashboard, MessageSquare, ShieldCheck, Settings, Cpu, HardDrive, Database, BadgeCheck } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { translations } from '../constants/translations';
 import AnimatedInteractiveButton from './AnimatedInteractiveButton';
@@ -60,7 +60,7 @@ const Sidebar = ({ activeTab, setActiveTab, systemStats, isCollapsed, language }
       label: t.nav.advanced || (language === 'fr' ? 'CENTRE AVANCE' : 'ADVANCED CENTER'),
       icon: <Settings size={18} />,
       description: language === 'fr' ? 'Options expertes (optionnel)' : 'Expert options (optional)'
-    }
+    },
   ];
 
   return (

@@ -17,6 +17,7 @@ export default function MainPanel({
   // On les garde ici pour qu'ils ne soient pas réinitialisés quand on change d'onglet
   const [selectedChatId, setSelectedChatId] = useState(null);
   const [selectedModel, setSelectedModel] = useState("");
+  const [selectedProvider, setSelectedProvider] = useState("ollama");
 
   return (
     <div className="flex h-screen w-screen overflow-hidden">
@@ -32,6 +33,8 @@ export default function MainPanel({
         
         selectedModel={selectedModel}
         setSelectedModel={setSelectedModel}
+        selectedProvider={selectedProvider}
+        setSelectedProvider={setSelectedProvider}
 
         isNavOpen={isNavOpen}
         setIsNavOpen={setIsNavOpen}

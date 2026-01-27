@@ -13,6 +13,11 @@ const ModelLibrary = ({ language = 'fr', systemStats, setActiveTab }) => {
   const [customModelName, setCustomModelName] = useState('');
   const [showVramModal, setShowVramModal] = useState(false);
   const [pendingModel, setPendingModel] = useState(null);
+  const [airllmStatus, setAirllmStatus] = useState({ status: 'OFF' });
+  const [airllmModels, setAirllmModels] = useState([]);
+  const [airllmBusy, setAirllmBusy] = useState(false);
+  const [airllmError, setAirllmError] = useState(null);
+  const [selectedAirModel, setSelectedAirModel] = useState('');
 
   const vramTotalMb = Number(systemStats?.vramTotal ?? systemStats?.gpu?.vram_total ?? 0);
   const vramTotalGb = vramTotalMb > 0 ? vramTotalMb / 1024 : 0;
@@ -30,6 +35,74 @@ const ModelLibrary = ({ language = 'fr', systemStats, setActiveTab }) => {
     }
   }, []);
 
+  const loadAirllmState = useCallback(async () => {
+    try {
+      const [statusRes, listRes] = await Promise.all([
+        requestWorker('airllm_status'),
+        requestWorker('airllm_list_models'),
+      ]);
+      if (statusRes && statusRes.status) setAirllmStatus(statusRes);
+      const curated = Array.isArray(listRes?.models) ? listRes.models : [];
+      setAirllmModels(curated);
+      if (!selectedAirModel && (statusRes?.model || curated[0]?.id)) {
+        setSelectedAirModel(statusRes?.model || curated[0]?.id);
+      }
+    } catch (err) {
+      setAirllmError(err?.message || 'AirLLM unavailable');
+    }
+  }, [selectedAirModel]);
+
+  const handleAirllmEnable = async () => {
+    const model = selectedAirModel || airllmModels[0]?.id;
+    if (!model) {
+      setAirllmError(language === 'fr' ? 'Choisissez un modèle AirLLM.' : 'Select an AirLLM model.');
+      return;
+    }
+    setAirllmBusy(true);
+    setAirllmError(null);
+    try {
+      setAirllmStatus((prev) => ({ ...(prev || {}), status: 'LOADING', model }));
+      await requestWorker('airllm_enable', { model });
+      window.dispatchEvent(new Event('airllm-updated'));
+      await loadAirllmState();
+    } catch (err) {
+      setAirllmError(err?.message || 'AirLLM enable failed');
+    } finally {
+      setAirllmBusy(false);
+    }
+  };
+
+  const handleAirllmReload = async () => {
+    const model = selectedAirModel || airllmModels[0]?.id;
+    if (!model) return;
+    setAirllmBusy(true);
+    setAirllmError(null);
+    try {
+      setAirllmStatus((prev) => ({ ...(prev || {}), status: 'LOADING', model }));
+      await requestWorker('airllm_reload', { model });
+      window.dispatchEvent(new Event('airllm-updated'));
+      await loadAirllmState();
+    } catch (err) {
+      setAirllmError(err?.message || 'AirLLM reload failed');
+    } finally {
+      setAirllmBusy(false);
+    }
+  };
+
+  const handleAirllmStop = async () => {
+    setAirllmBusy(true);
+    setAirllmError(null);
+    try {
+      await requestWorker('airllm_disable');
+      window.dispatchEvent(new Event('airllm-updated'));
+      await loadAirllmState();
+    } catch (err) {
+      setAirllmError(err?.message || 'AirLLM stop failed');
+    } finally {
+      setAirllmBusy(false);
+    }
+  };
+
   useEffect(() => {
     fetchInstalledModels();
 
@@ -37,9 +110,17 @@ const ModelLibrary = ({ language = 'fr', systemStats, setActiveTab }) => {
       fetchInstalledModels();
     };
 
+    const handleAirUpdate = () => {
+      loadAirllmState();
+    };
+
     window.addEventListener('models-updated', handleModelsUpdate);
-    return () => window.removeEventListener('models-updated', handleModelsUpdate);
-  }, [fetchInstalledModels]);
+    window.addEventListener('airllm-updated', handleAirUpdate);
+    return () => {
+      window.removeEventListener('models-updated', handleModelsUpdate);
+      window.removeEventListener('airllm-updated', handleAirUpdate);
+    };
+  }, [fetchInstalledModels, loadAirllmState]);
 
   useEffect(() => {
     let unlisten = null;
@@ -72,6 +153,12 @@ const ModelLibrary = ({ language = 'fr', systemStats, setActiveTab }) => {
       if (unlisten) unlisten();
     };
   }, [downloadingModel, fetchInstalledModels]);
+
+  useEffect(() => {
+    loadAirllmState();
+    const poll = setInterval(loadAirllmState, 6000);
+    return () => clearInterval(poll);
+  }, [loadAirllmState]);
 
   const isModelInstalled = useCallback((libraryName) => {
     if (!libraryName) return false;
@@ -124,8 +211,102 @@ const ModelLibrary = ({ language = 'fr', systemStats, setActiveTab }) => {
     });
   }, [searchTerm, language]);
 
+  const airStatusCode = (airllmStatus?.status || 'OFF').toUpperCase();
+  const airStatusClasses = {
+    OFF: isDarkMode ? 'bg-white/10 text-white/70' : 'bg-slate-100 text-slate-700',
+    LOADING: 'bg-amber-500/15 text-amber-600 border border-amber-200/70',
+    READY: 'bg-emerald-500/15 text-emerald-500 border border-emerald-200/70',
+    ERROR: 'bg-red-500/15 text-red-500 border border-red-200/70'
+  };
+
+  const isAirCompatible = useCallback((modelName) => {
+    if (!modelName || !airllmModels?.length) return false;
+    const base = modelName.split(':')[0].toLowerCase();
+    return airllmModels.some((m) => (m.id || '').toLowerCase().includes(base));
+  }, [airllmModels]);
+
   return (
     <div className={`p-6 sm:p-8 lg:p-10 w-full h-full overflow-y-auto custom-scrollbar ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+      {/* AirLLM control (moved to model library for visibility) */}
+      <div className="max-w-6xl mx-auto mb-8">
+        <div className={`rounded-[26px] border overflow-hidden backdrop-blur-xl shadow-[0_18px_60px_rgba(0,0,0,0.35)] ${isDarkMode
+          ? 'border-white/8 bg-gradient-to-br from-[#0c0f16] via-[#0e1220] to-[#0b0e18]'
+          : 'border-slate-200 bg-gradient-to-br from-white via-slate-50 to-white'}`}>
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 px-6 py-5">
+            <div className="space-y-2">
+              <p className={`text-[10px] font-black uppercase tracking-[0.35em] ${isDarkMode ? 'text-white/50' : 'text-slate-500'}`}>AirLLM</p>
+              <h3 className="text-2xl font-black tracking-tight flex items-center gap-3">
+                {language === 'fr' ? 'Modèles HF locaux' : 'Local HF models'}
+                <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${airStatusClasses[airStatusCode]}`}>
+                  {airStatusCode}
+                </span>
+              </h3>
+              <p className={`${isDarkMode ? 'text-white/60' : 'text-slate-600'} text-sm max-w-xl`}>
+                {language === 'fr'
+                  ? 'Charge un modèle HuggingFace via AirLLM (sidecar unique). Recharger pour changer de modèle.'
+                  : 'Load a HuggingFace model through AirLLM (single sidecar). Reload to switch model.'}
+              </p>
+              {airllmError && (
+                <div className="text-xs px-3 py-2 rounded-xl bg-red-500/10 text-red-400 border border-red-500/30 inline-block">
+                  {airllmError}
+                </div>
+              )}
+            </div>
+            <div className="w-full lg:w-[420px] flex flex-col gap-3">
+              <div className="relative">
+                <label className={`text-[10px] font-black uppercase tracking-[0.25em] block mb-2 ${isDarkMode ? 'text-white/60' : 'text-slate-500'}`}>
+                  {language === 'fr' ? 'Modèle AirLLM' : 'AirLLM model'}
+                </label>
+                <div className={`relative rounded-[18px] px-4 py-2 h-12 flex items-center ${isDarkMode
+                  ? 'border border-white/10 bg-gradient-to-r from-[#121722] via-[#0f141e] to-[#0b0f18]'
+                  : 'border border-slate-200 bg-gradient-to-r from-white via-slate-50 to-white'} shadow-[0_14px_40px_rgba(0,0,0,0.28)]`}>
+                  <select
+                    value={selectedAirModel || ''}
+                    onChange={(e) => setSelectedAirModel(e.target.value)}
+                    disabled={airllmBusy}
+                    className={`w-full appearance-none bg-transparent outline-none text-sm font-semibold pr-8 ${isDarkMode ? 'text-white' : 'text-slate-800'}`}
+                  >
+                    {(airllmModels || []).map((m) => (
+                      <option key={m.id} value={m.id}>{m.label || m.id}</option>
+                    ))}
+                    {(!airllmModels || airllmModels.length === 0) && (
+                      <option value="">{language === 'fr' ? 'Aucun modèle' : 'No models'}</option>
+                    )}
+                  </select>
+                  <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2">
+                    <div className={`w-2.5 h-2.5 border-b-2 border-r-2 rotate-45 ${isDarkMode ? 'border-white/60' : 'border-slate-500'}`} />
+                  </div>
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <button
+                  onClick={handleAirllmEnable}
+                  disabled={airllmBusy}
+                  className={`px-4 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all ${isDarkMode ? 'bg-emerald-500 text-white hover:bg-emerald-400' : 'bg-emerald-500 text-white hover:bg-emerald-400'} shadow-[0_10px_30px_rgba(16,185,129,0.35)] ${airllmBusy ? 'opacity-60 cursor-not-allowed' : ''}`}
+                >
+                  {airStatusCode === 'READY'
+                    ? (language === 'fr' ? 'Actif' : 'Enabled')
+                    : (language === 'fr' ? 'Activer' : 'Enable')}
+                </button>
+                <button
+                  onClick={handleAirllmReload}
+                  disabled={airllmBusy || !selectedAirModel}
+                  className={`px-4 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all ${isDarkMode ? 'bg-indigo-500/20 text-white hover:bg-indigo-500/30' : 'bg-slate-900 text-white hover:bg-slate-800'} shadow-[0_10px_30px_rgba(99,102,241,0.25)] ${airllmBusy ? 'opacity-60 cursor-not-allowed' : ''}`}
+                >
+                  {language === 'fr' ? 'Charger' : 'Load / Reload'}
+                </button>
+                <button
+                  onClick={handleAirllmStop}
+                  disabled={airllmBusy || airStatusCode === 'OFF'}
+                  className={`px-4 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all ${isDarkMode ? 'bg-white/8 text-white hover:bg-white/15' : 'bg-slate-100 text-slate-800 hover:bg-slate-200'} ${airllmBusy || airStatusCode === 'OFF' ? 'opacity-60 cursor-not-allowed' : ''}`}
+                >
+                  {language === 'fr' ? 'Stop' : 'Stop'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
       {showVramModal && pendingModel && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-md">
           <div className={`p-6 w-full max-w-md rounded-[28px] border ${isDarkMode ? 'bg-[#0A0A0A] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900'}`}>
@@ -282,6 +463,7 @@ const ModelLibrary = ({ language = 'fr', systemStats, setActiveTab }) => {
               : (vramOk ? (language === 'fr' ? 'Compatible' : 'Compatible') : (language === 'fr' ? 'VRAM insuffisante' : 'VRAM too low'));
             const vramBadgeTone = !hasVramInfo ? 'neutral' : (vramOk ? 'good' : 'bad');
             const disableDownload = isInstalled || (downloadingModel && !isDownloading);
+            const airCompat = isAirCompatible(model.name);
             return (
               <div
                 key={model.name}
@@ -305,6 +487,15 @@ const ModelLibrary = ({ language = 'fr', systemStats, setActiveTab }) => {
                                 : (isDarkMode ? 'bg-white/10 text-white/60' : 'bg-slate-100 text-slate-500')
                           }`}>
                             {vramBadge}
+                          </span>
+                          <span className={`px-2 py-0.5 rounded-full text-[8px] font-black ${
+                            airCompat
+                              ? (isDarkMode ? 'bg-cyan-500/20 text-cyan-200' : 'bg-cyan-100 text-cyan-700')
+                              : (isDarkMode ? 'bg-white/10 text-white/60' : 'bg-slate-100 text-slate-500')
+                          }`}>
+                            {airCompat
+                              ? (language === 'fr' ? 'AirLLM OK' : 'AirLLM OK')
+                              : (language === 'fr' ? 'AirLLM Non' : 'AirLLM No')}
                           </span>
                         </div>
                       </div>

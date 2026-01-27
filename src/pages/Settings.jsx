@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Wifi, Rocket, User, Save, Languages, Loader2, HardDrive, Search, Check, AlertCircle, Shield, Globe, Sparkles, Cpu } from 'lucide-react';
 import { translations } from '../constants/translations';
 import { useTheme } from '../contexts/ThemeContext';
@@ -6,6 +6,7 @@ import { open } from '@tauri-apps/plugin-dialog';
 import { requestWorker } from '../services/bridge';
 // RemoteAccess déplacé dans la sidebar principale (V2.1)
 import PermissionService from '../services/permission_service';
+import { getReduceAnimationsPref, setReduceAnimationsPref } from '../state/licenseStore';
 
 export default function Settings({ userName, setUserName, language, setLanguage, setActiveTab }) {
   const { isDarkMode } = useTheme();
@@ -17,7 +18,9 @@ export default function Settings({ userName, setUserName, language, setLanguage,
     gpuAcceleration: true,
     runAtStartup: false,
     autoUpdate: true,
-    ollama_models_path: ""
+    ollama_models_path: "",
+    airllm_enabled: false,
+    airllm_model: ""
   };
 
   const [settings, setSettings] = useState(defaultSettings);
@@ -25,11 +28,18 @@ export default function Settings({ userName, setUserName, language, setLanguage,
   const [loading, setLoading] = useState(true);
   const [modelsPath, setModelsPath] = useState("");
   const [saveStatus, setSaveStatus] = useState(null); // 'success' | 'error' | null
+  const SHOW_AIRLLM_SETTINGS = false; // Masqué pour l'instant
+  const [airllmStatus] = useState({ status: 'OFF' });
+  const [airllmModels] = useState([]);
+  const [selectedAirModel] = useState("");
+  const [airllmError] = useState(null);
+  const [airllmBusy] = useState(false);
   const [paranoMode, setParanoMode] = useState(true); // Mode parano (V2)
   const [clickCount, setClickCount] = useState(0); // Easter egg counter
   const [showSecurityConfirm, setShowSecurityConfirm] = useState(false);
   const [pendingSecurityValue, setPendingSecurityValue] = useState(false);
   const [securityConfirmMessage, setSecurityConfirmMessage] = useState('');
+  const [reduceAnimations, setReduceAnimations] = useState(getReduceAnimationsPref());
 
   const t = translations[settings.language] || translations.en;
 
@@ -162,11 +172,149 @@ export default function Settings({ userName, setUserName, language, setLanguage,
     }
   };
 
+  const toggleReduceAnimations = () => {
+    const next = !reduceAnimations;
+    setReduceAnimations(next);
+    setReduceAnimationsPref(next);
+  };
+
+  const loadAirllmState = useCallback(async (preferredModel = null) => {
+    setAirllmError(null);
+    try {
+      const [statusRes, listRes] = await Promise.all([
+        requestWorker("airllm_status"),
+        requestWorker("airllm_list_models")
+      ]);
+
+      if (statusRes && typeof statusRes === 'object' && statusRes.status) {
+        setAirllmStatus(statusRes);
+      }
+
+      const curated = Array.isArray(listRes?.models) ? listRes.models : [];
+      setAirllmModels(curated);
+
+      const initial = (statusRes && statusRes.model)
+        || preferredModel
+        || settings.airllm_model
+        || curated[0]?.id
+        || "";
+
+      if (!selectedAirModel && initial) {
+        setSelectedAirModel(initial);
+      }
+    } catch (err) {
+      setAirllmError(err?.message || 'AirLLM unavailable');
+    }
+  }, [settings.airllm_model, selectedAirModel]);
+
+  const handleAirllmModelChange = (value) => {
+    setSelectedAirModel(value);
+    setSettings((prev) => ({ ...prev, airllm_model: value }));
+  };
+
+  const handleAirllmToggle = async () => {
+    const enabling = !settings.airllm_enabled;
+    const modelToUse = selectedAirModel || settings.airllm_model || airllmModels[0]?.id || "";
+    if (enabling && !modelToUse) {
+      setAirllmError(language === 'fr' ? 'Sélectionnez un modèle avant de lancer AirLLM.' : 'Select a model before enabling AirLLM.');
+      return;
+    }
+    setAirllmBusy(true);
+    setAirllmError(null);
+    try {
+      if (enabling) {
+        setAirllmStatus((prev) => ({ ...(prev || {}), status: 'LOADING', model: modelToUse }));
+        await requestWorker("airllm_enable", { model: modelToUse });
+      } else {
+        await requestWorker("airllm_disable");
+      }
+      const updated = { ...settings, airllm_enabled: enabling, airllm_model: modelToUse };
+      setSettings(updated);
+      await saveSettingsAuto(updated);
+      window.dispatchEvent(new Event("airllm-updated"));
+      await loadAirllmState(modelToUse);
+    } catch (err) {
+      setAirllmError(err?.message || 'AirLLM action failed');
+    } finally {
+      setAirllmBusy(false);
+    }
+  };
+
+  const handleAirllmReload = async () => {
+    const modelToUse = selectedAirModel || settings.airllm_model || airllmModels[0]?.id || "";
+    if (!modelToUse) return;
+    setAirllmBusy(true);
+    setAirllmError(null);
+    try {
+      setAirllmStatus((prev) => ({ ...(prev || {}), status: 'LOADING', model: modelToUse }));
+      await requestWorker("airllm_reload", { model: modelToUse });
+      const updated = { ...settings, airllm_enabled: true, airllm_model: modelToUse };
+      setSettings(updated);
+      await saveSettingsAuto(updated);
+      window.dispatchEvent(new Event("airllm-updated"));
+      await loadAirllmState(modelToUse);
+    } catch (err) {
+      setAirllmError(err?.message || 'AirLLM reload failed');
+    } finally {
+      setAirllmBusy(false);
+    }
+  };
+
+  const handleAirllmStop = async () => {
+    setAirllmBusy(true);
+    setAirllmError(null);
+    try {
+      await requestWorker("airllm_disable");
+      const updated = { ...settings, airllm_enabled: false };
+      setSettings(updated);
+      await saveSettingsAuto(updated);
+      window.dispatchEvent(new Event("airllm-updated"));
+      await loadAirllmState();
+    } catch (err) {
+      setAirllmError(err?.message || 'AirLLM stop failed');
+    } finally {
+      setAirllmBusy(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!loading) {
+      loadAirllmState(settings.airllm_model);
+    }
+  }, [loading, loadAirllmState, settings.airllm_model]);
+
+  useEffect(() => {
+    if (!airllmStatus || airllmStatus.status === 'OFF') return;
+    const interval = setInterval(async () => {
+      try {
+        const status = await requestWorker("airllm_status");
+        if (status && status.status) setAirllmStatus(status);
+      } catch {
+        // ignore polling errors
+      }
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [airllmStatus?.status]);
+
   if (loading) return (
     <div className={`p-20 opacity-20 animate-pulse font-black ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
       {language === 'fr' ? 'INITIALISATION...' : 'INITIALIZING...'}
     </div>
   );
+
+  const airStatusCode = (airllmStatus?.status || 'OFF').toUpperCase();
+  const airStatusClasses = {
+    OFF: 'bg-slate-600 text-white',
+    LOADING: 'bg-amber-500 text-black',
+    READY: 'bg-emerald-500 text-white',
+    ERROR: 'bg-red-500 text-white'
+  };
+  const airStatusLabel = {
+    OFF: language === 'fr' ? 'OFF' : 'OFF',
+    LOADING: language === 'fr' ? 'CHARGEMENT' : 'LOADING',
+    READY: language === 'fr' ? 'PRÊT' : 'READY',
+    ERROR: language === 'fr' ? 'ERREUR' : 'ERROR'
+  }[airStatusCode] || airStatusCode;
 
   return (
     <div className={`p-6 sm:p-8 lg:p-12 xl:p-16 w-full h-full overflow-y-auto custom-scrollbar animate-page-entry transition-colors duration-500 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
@@ -214,6 +362,102 @@ export default function Settings({ userName, setUserName, language, setLanguage,
             </div>
           )}
         </div>
+
+        {false && (
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+          <div className={`p-6 rounded-3xl border ${isDarkMode ? 'bg-[#0A0A0A] border-white/10' : 'bg-white border-slate-200 shadow-sm'}`}>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <p className={`text-[10px] font-black uppercase tracking-[0.35em] mb-1 ${isDarkMode ? 'text-white/40' : 'text-slate-500'}`}>AirLLM</p>
+                <h3 className="text-2xl font-black tracking-tight">
+                  {language === 'fr' ? 'Sidecar Python' : 'Python sidecar'}
+                </h3>
+              </div>
+              <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${airStatusClasses[airStatusCode] || 'bg-slate-600 text-white'}`}>
+                {airStatusLabel}
+              </span>
+            </div>
+            <p className={`text-sm mb-4 ${isDarkMode ? 'text-white/60' : 'text-slate-600'}`}>
+              {language === 'fr'
+                ? "Charge un modèle HuggingFace via AirLLM. Désactivé par défaut pour éviter la consommation GPU."
+                : "Load a HuggingFace model through AirLLM. Disabled by default to keep GPU/CPU free."}
+            </p>
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className={`text-[11px] font-black uppercase tracking-[0.25em] ${isDarkMode ? 'text-white/60' : 'text-slate-500'}`}>
+                  {language === 'fr' ? 'Modèle AirLLM' : 'AirLLM model'}
+                </label>
+                <div className={`rounded-2xl border ${isDarkMode ? 'border-white/10 bg-white/5' : 'border-slate-200 bg-white'} px-3 py-2`}>
+                  <select
+                    value={selectedAirModel || ''}
+                    onChange={(e) => handleAirllmModelChange(e.target.value)}
+                    disabled={airllmBusy}
+                    className={`w-full bg-transparent outline-none text-sm ${isDarkMode ? 'text-white' : 'text-slate-800'}`}
+                  >
+                    {(airllmModels || []).map((m) => (
+                      <option key={m.id} value={m.id}>{m.label || m.id}</option>
+                    ))}
+                    {(!airllmModels || airllmModels.length === 0) && (
+                      <option value="">{language === 'fr' ? 'Aucun modèle' : 'No models'}</option>
+                    )}
+                  </select>
+                </div>
+                <p className={`text-[11px] ${isDarkMode ? 'text-white/40' : 'text-slate-500'}`}>
+                  {language === 'fr'
+                    ? "Liste conservée localement (pas de requête HF dynamique)."
+                    : "Curated list only (no dynamic HF lookup)."}
+                </p>
+              </div>
+              <div className="flex flex-col gap-3">
+                <button
+                  onClick={handleAirllmToggle}
+                  disabled={airllmBusy}
+                  className={`w-full px-4 py-3 rounded-2xl font-black uppercase text-xs tracking-widest transition-all ${settings.airllm_enabled
+                    ? 'bg-red-500 text-white hover:bg-red-400'
+                    : 'bg-emerald-500 text-white hover:bg-emerald-400'
+                    } ${airllmBusy ? 'opacity-60 cursor-not-allowed' : ''}`}
+                >
+                  {settings.airllm_enabled
+                    ? (language === 'fr' ? 'Désactiver' : 'Disable')
+                    : (language === 'fr' ? 'Activer' : 'Enable')}
+                </button>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={handleAirllmReload}
+                    disabled={airllmBusy}
+                    className={`px-4 py-3 rounded-2xl font-black uppercase text-[10px] tracking-widest ${isDarkMode
+                      ? 'bg-white/10 text-white hover:bg-white/20'
+                      : 'bg-slate-900 text-white hover:bg-slate-800'
+                      } ${airllmBusy ? 'opacity-60 cursor-not-allowed' : ''}`}
+                  >
+                    {language === 'fr' ? 'Charger / Recharger' : 'Load / Reload'}
+                  </button>
+                  <button
+                    onClick={handleAirllmStop}
+                    disabled={airllmBusy || airStatusCode === 'OFF'}
+                    className={`px-4 py-3 rounded-2xl font-black uppercase text-[10px] tracking-widest ${isDarkMode
+                      ? 'bg-white/5 text-white hover:bg-white/10'
+                      : 'bg-slate-100 text-slate-800 hover:bg-slate-200'
+                      } ${airllmBusy || airStatusCode === 'OFF' ? 'opacity-60 cursor-not-allowed' : ''}`}
+                  >
+                    {language === 'fr' ? 'Stop / Unload' : 'Stop / Unload'}
+                  </button>
+                </div>
+                <div className={`text-[11px] ${isDarkMode ? 'text-white/50' : 'text-slate-500'}`}>
+                  {language === 'fr'
+                    ? "Une seule instance sidecar. Changer de modèle déclenche un redémarrage propre."
+                    : "Single sidecar instance. Changing model triggers a clean restart."}
+                </div>
+              </div>
+            </div>
+            {airllmError && (
+              <div className="mt-3 text-xs px-3 py-2 rounded-xl bg-red-500/10 text-red-500 border border-red-500/30">
+                {airllmError}
+              </div>
+            )}
+          </div>
+        </div>
+        )}
 
         {/* Easter Egg - Animation Demo Access */}
         {clickCount >= 3 && (
@@ -325,6 +569,21 @@ export default function Settings({ userName, setUserName, language, setLanguage,
                 description={t.settings?.update_desc || (language === 'fr' ? "Mise a jour auto des modeles." : "Auto-update installed models.")}
                 active={settings.autoUpdate}
                 onClick={() => toggleSetting('autoUpdate')}
+                isDarkMode={isDarkMode}
+              />
+            </div>
+          </SectionContainer>
+
+          {/* ACCESSIBILITÉ / ANIMATIONS */}
+          <SectionContainer title={language === 'fr' ? "ACCESSIBILITÉ" : "ACCESSIBILITY"} icon={Sparkles} isDarkMode={isDarkMode}>
+            <div className="space-y-3">
+              <ToggleRow
+                label={language === 'fr' ? "Réduire les animations" : "Reduce animations"}
+                description={language === 'fr'
+                  ? "Respecte aussi prefers-reduced-motion."
+                  : "Respects prefers-reduced-motion as well."}
+                active={reduceAnimations}
+                onClick={toggleReduceAnimations}
                 isDarkMode={isDarkMode}
               />
             </div>

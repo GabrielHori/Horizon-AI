@@ -98,7 +98,9 @@ class SystemService:
             "gpuAcceleration": True,
             "runAtStartup": False,
             "autoUpdate": True,
-            "ollama_models_path": ""
+            "ollama_models_path": "",
+            "airllm_enabled": False,
+            "airllm_model": None
         }
         
         try:
